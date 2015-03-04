@@ -49,21 +49,17 @@ CO2_BEGIN(return_type, ())
 Inside the coroutine body, there are some restrictions:
 * auto local variables are not allowed - you should specify them in local variables section of `CO2_BEGIN`
 * `return`, try-catch should be replace with the corresponding macros
+* identifiers starting with `_co2_` are reserved for this library
 
 Besides, `await` is implemented as a statement instead of an expression due to the emulation restriction, and it has 3 variants: `CO2_AWAIT`, `CO2_AWAIT_GET` and `CO2_AWAIT_LET`.
 
 * `CO2_AWAIT(expr)`
 
-Equivalent to `await expr`, for example:
-```c++
-CO2_AWAIT(task);
-```
+Equivalent to `await expr`.
+
 * `CO2_AWAIT_GET(var, expr)`
 
-Equivalent to `var = await expr`, for example:
-```c++
-CO2_AWAIT_GET(i, task);
-```
+Equivalent to `var = await expr`.
 
 * `CO2_AWAIT_LET(var-decl, expr, body)`
 
