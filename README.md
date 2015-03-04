@@ -75,6 +75,9 @@ CO2_AWAIT_LET(auto i, task,
 });
 ```
 
+__Headers__
+* `#include <co2/coroutine.hpp>`
+
 __Macros__
 * `CO2_BEGIN`
 * `CO2_END`
@@ -86,9 +89,9 @@ __Macros__
 * `CO2_CATCH`
 
 __Classes__
-* `coroutine`
-* `suspend_always`
-* `suspend_never`
+* `co2::coroutine<Promise>`
+* `co2::suspend_always`
+* `co2::suspend_never`
 
 ## Tutorial
 
