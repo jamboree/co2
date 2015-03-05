@@ -32,7 +32,7 @@ return_type function(Args... args)
 ```
 is just a plain-old function prototype, you can forward declare it as well.
 
-Ready preprocessor magic? Here we go ;)
+Ready preprocessor magic? here we go...
 
 The coroutine body is surrounded with 2 macros: `CO2_BEGIN` and `CO2_END`.
 
@@ -46,7 +46,7 @@ Both _args_ and _locals_ are optional, depends on your need, you can leave them 
 CO2_BEGIN(return_type, ())
 ```
 
-You may find that repeating the return_type twice is annoying, as C++11 adds trailing return type syntax, the library also provide a convenient macro `CO2_RET`, which is particularly neat for lambda functions:
+You may find that repeating the return_type twice is annoying, as C++11 adds trailing return type syntax, the library also provide a convenient macro `CO2_RET`, which is particularly fit for lambda expressions:
 ```c++
 []() CO2_RET(return_type, ()) {...} CO2_END
 ```
@@ -56,7 +56,22 @@ Inside the coroutine body, there are some restrictions:
 * `return`, try-catch should be replace with the corresponding macros
 * identifiers starting with `_co2_` are reserved for this library
 
-Besides, `await` is implemented as a statement instead of an expression due to the emulation restriction, and it has 3 variants: `CO2_AWAIT`, `CO2_AWAIT_GET` and `CO2_AWAIT_LET`.
+__return statement__
+* `return` -> `CO2_RETURN()`
+* `return expr` -> `CO2_RETURN(expr)`
+
+__try-catch__
+```c++
+CO2_TRY {...}
+CO2_CATCH (std::runtime_error& e) {...}
+catch (std::exception& e) {...}
+```
+
+Note that only the first `catch` clause needs to be spelled `CO2_CATCH`, the subsequent ones should use the plain `catch`.
+
+### await & yield
+
+In CO2, `await` is implemented as a statement instead of an expression due to the emulation restriction, and it has 3 variants: `CO2_AWAIT`, `CO2_AWAIT_GET` and `CO2_AWAIT_LET`.
 
 * `CO2_AWAIT(expr)`
 
@@ -79,17 +94,19 @@ CO2_AWAIT_LET(auto i, task,
 As `yield` is defined in N4286, CO2 also provides the corresponding `CO2_YIELD`.
 `CO2_YIELD(expr)` is equivalent to `CO2_AWAIT(<this-promise>.yield_value(expr))`.
 
+The fact that `await` in CO2 is not an expression has an implication on object lifetime, consider this case:
+
+`await something{temporaries}` and `something` holds references to temporaries.
+
+It's safe if `await` is an expression as in N4286, but in CO2, `CO2_AWAIT(something{temporaries})` is an emulated statement, the temporaries will go out of scope.
+
 ## Difference from N4286
 
 * Unlike `coroutine_handle` in N4286, `coroutine` is ref-counted.
 * No `coroutine_traits`, CO2 always use `return_type::promise_type` for the promise.
 * `promise_type::final_suspend` is ignored.
 
-The fact that `await` in CO2 is not an expression has an implication on object lifetime, consider this case:
-
-`await something{temporaries}` and `something` holds references to temporaries.
-
-It's safe if `await` is an expression as in N4286, but in CO2, `CO2_AWAIT(something{temporaries})` is an emulated statement, the temporaries will go out of scope.
+## Reference
 
 __Headers__
 * `#include <co2/coroutine.hpp>`
@@ -112,8 +129,6 @@ __Classes__
 * `co2::suspend_always`
 * `co2::suspend_never`
 
-## Tutorial
-
 ## Example
 
 ### Generator
@@ -123,7 +138,7 @@ __Define a generator__
 auto range(int i, int e) CO2_RET(co2::generator<int>, (i, e))
 {
     for (; i != e; ++i)
-        CO2_YIELD(a);
+        CO2_YIELD(i);
 } CO2_END;
 ```
 
