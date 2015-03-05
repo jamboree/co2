@@ -1,4 +1,4 @@
-CO2 - Coroutine The Second
+CO2 - Coroutine II
 ===
 
 A C++ stackless coroutine emulation library, providing interface close to [N4286](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4286.pdf).
@@ -32,7 +32,7 @@ return_type function(Args... args)
 ```
 is just a plain-old function prototype, you can forward declare it as well.
 
-Ready preprocessor magic? here we go...
+Ready for preprocessor magic? here we go...
 
 The coroutine body is surrounded with 2 macros: `CO2_BEGIN` and `CO2_END`.
 
@@ -67,17 +67,17 @@ CO2_CATCH (std::runtime_error& e) {...}
 catch (std::exception& e) {...}
 ```
 
-Note that only the first `catch` clause needs to be spelled `CO2_CATCH`, the subsequent ones should use the plain `catch`.
+Note that only the first `catch` clause needs to be spelled as `CO2_CATCH`, the subsequent ones should use the plain `catch`.
 
 ### await & yield
 
-In CO2, `await` is implemented as a statement instead of an expression due to the emulation restriction, and it has 3 variants: `CO2_AWAIT`, `CO2_AWAIT_GET` and `CO2_AWAIT_LET`.
+In _CO2_, `await` is implemented as a statement instead of an expression due to the emulation restriction, and it has 3 variants: `CO2_AWAIT`, `CO2_AWAIT_SET` and `CO2_AWAIT_LET`.
 
 * `CO2_AWAIT(expr)`
 
 Equivalent to `await expr`.
 
-* `CO2_AWAIT_GET(var, expr)`
+* `CO2_AWAIT_SET(var, expr)`
 
 Equivalent to `var = await expr`.
 
@@ -91,19 +91,19 @@ CO2_AWAIT_LET(auto i, task,
 });
 ```
 
-As `yield` is defined in N4286, CO2 also provides the corresponding `CO2_YIELD`.
+As `yield` is defined in N4286, _CO2_ also provides the corresponding `CO2_YIELD`.
 `CO2_YIELD(expr)` is equivalent to `CO2_AWAIT(<this-promise>.yield_value(expr))`.
 
-The fact that `await` in CO2 is not an expression has an implication on object lifetime, consider this case:
+The fact that `await` in _CO2_ is not an expression has an implication on object lifetime, consider this case:
 
 `await something{temporaries}` and `something` holds references to temporaries.
 
-It's safe if `await` is an expression as in N4286, but in CO2, `CO2_AWAIT(something{temporaries})` is an emulated statement, the temporaries will go out of scope.
+It's safe if `await` is an expression as in N4286, but in _CO2_, `CO2_AWAIT(something{temporaries})` is an emulated statement, the temporaries will go out of scope.
 
 ## Difference from N4286
 
 * Unlike `coroutine_handle` in N4286, `coroutine` is ref-counted.
-* No `coroutine_traits`, CO2 always use `return_type::promise_type` for the promise.
+* No `coroutine_traits`, _CO2_ always use `return_type::promise_type` for the promise.
 * `promise_type::final_suspend` is ignored.
 
 ## Reference
@@ -116,7 +116,7 @@ __Macros__
 * `CO2_RET`
 * `CO2_END`
 * `CO2_AWAIT`
-* `CO2_AWAIT_GET`
+* `CO2_AWAIT_SET`
 * `CO2_AWAIT_LET`
 * `CO2_YIELD`
 * `CO2_RETURN`

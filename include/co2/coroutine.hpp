@@ -119,12 +119,14 @@ namespace co2 { namespace detail
 
     struct resumable_base
     {
+        using function_t = void(resumable_base*, coroutine<> const&);
+
+        function_t* _run;
+        function_t* _release;
         temp::storage _tmp;
         std::atomic<unsigned> _use_count {1};
         unsigned _next;
         unsigned _eh = sentinel::value;
-        virtual void run(coroutine<> const&) noexcept = 0;
-        virtual void release(coroutine<> const&) noexcept = 0;
 
         bool done() const noexcept
         {
@@ -147,25 +149,29 @@ namespace co2 { namespace detail
     };
     
     template<class Promise, class F>
-    struct frame final : resumable<Promise>
+    struct frame : resumable<Promise>
     {
         F f;
 
         template<class Pack>
         frame(Pack&& pack) : f(std::forward<Pack>(pack))
         {
+            this->_run = run;
+            this->_release = release;
             this->_next = F::_co2_start::value;
         }
 
-        void run(coroutine<> const& coro) noexcept override
+        static void run(resumable_base* p, coroutine<> const& coro) noexcept
         {
-            f(static_cast<coroutine<Promise> const&>(coro), this->_next, this->_eh, &this->_tmp);
+            auto that = static_cast<frame*>(p);
+            that->f(static_cast<coroutine<Promise> const&>(coro), that->_next, that->_eh, &that->_tmp);
         }
 
-        void release(coroutine<> const& coro) noexcept override
+        static void release(resumable_base* p, coroutine<> const& coro) noexcept
         {
-            f(static_cast<coroutine<Promise> const&>(coro), ++this->_next, this->_eh, &this->_tmp);
-            delete this;
+            auto that = static_cast<frame*>(p);
+            that->f(static_cast<coroutine<Promise> const&>(coro), ++that->_next, that->_eh, &that->_tmp);
+            delete that;
         }
     };
     
@@ -246,7 +252,7 @@ namespace co2
 
         void operator()() const noexcept
         {
-            _ptr->run(*this);
+            _ptr->_run(_ptr, *this);
         }
 
         void* to_address() const noexcept
@@ -259,7 +265,7 @@ namespace co2
         void release_ptr() noexcept
         {
             if (_ptr && _ptr->_use_count.fetch_sub(1, std::memory_order_relaxed) == 1)
-                _ptr->release(*this);
+                _ptr->_release(_ptr, *this);
         }
 
         detail::resumable_base* _ptr;
@@ -392,7 +398,7 @@ namespace co2
 }                                                                               \
 /***/
 
-#define CO2_AWAIT_GET(ret, var) _impl_CO2_AWAIT(ret =, var, __COUNTER__)
+#define CO2_AWAIT_SET(ret, var) _impl_CO2_AWAIT(ret =, var, __COUNTER__)
 #define CO2_AWAIT(expr) _impl_CO2_AWAIT(, expr, __COUNTER__)
 #define CO2_AWAIT_LET(let, var, ...)                                            \
 _impl_CO2_AWAIT(([this](let) __VA_ARGS__), var, __COUNTER__)
