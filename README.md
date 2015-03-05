@@ -21,7 +21,7 @@ A coroutine written in this library looks like below:
 return_type function(Args... args)
 CO2_BEGIN(return_type, (args...), locals...)
 {
-    coroutine_body
+    <coroutine-body>
 }
 CO2_END
 ```
@@ -44,6 +44,11 @@ The macro `CO2_BEGIN` requires you to provide some parameters:
 Both _args_ and _locals_ are optional, depends on your need, you can leave them empty, for example:
 ```c++
 CO2_BEGIN(return_type, ())
+```
+
+You may find that repeating the return_type twice is annoying, as C++11 adds trailing return type syntax, the library also provide a convenient macro `CO2_RET`, which is particularly neat for lambda functions:
+```c++
+[]() CO2_RET(return_type, ()) {...} CO2_END
 ```
 
 Inside the coroutine body, there are some restrictions:
@@ -71,21 +76,39 @@ CO2_AWAIT_LET(auto i, task,
 });
 ```
 
+As `yield` is defined in N4286, CO2 also provides the corresponding `CO2_YIELD`.
+`CO2_YIELD(expr)` is equivalent to `CO2_AWAIT(<this-promise>.yield_value(expr))`.
+
+## Difference from N4286
+
+* Unlike `coroutine_handle` in N4286, `coroutine` is ref-counted.
+* No `coroutine_traits`, CO2 always use `return_type::promise_type` for the promise.
+* `promise_type::final_suspend` is ignored.
+
+The fact that `await` in CO2 is not an expression has an implication on object lifetime, consider this case:
+
+`await something{temporaries}` and `something` holds references to temporaries.
+
+It's safe if `await` is an expression as in N4286, but in CO2, `CO2_AWAIT(something{temporaries})` is an emulated statement, the temporaries will go out of scope.
+
 __Headers__
 * `#include <co2/coroutine.hpp>`
 
 __Macros__
 * `CO2_BEGIN`
+* `CO2_RET`
 * `CO2_END`
 * `CO2_AWAIT`
 * `CO2_AWAIT_GET`
 * `CO2_AWAIT_LET`
+* `CO2_YIELD`
 * `CO2_RETURN`
 * `CO2_TRY`
 * `CO2_CATCH`
 
 __Classes__
 * `co2::coroutine<Promise>`
+* `co2::generator<T>`
 * `co2::suspend_always`
 * `co2::suspend_never`
 
@@ -93,7 +116,24 @@ __Classes__
 
 ## Example
 
-TODO
+### Generator
+
+__Define a generator__
+```c++
+auto range(int i, int e) CO2_RET(co2::generator<int>, (i, e))
+{
+    for (; i != e; ++i)
+        CO2_YIELD(a);
+} CO2_END;
+```
+
+__Use a generator__
+```c++
+for (auto i : range(1, 10))
+{
+    std::cout << i << ", ";
+}
+```
 
 ## License
 
