@@ -150,6 +150,46 @@ for (auto i : range(1, 10))
 }
 ```
 
+### ASIO echo server
+
+This example uses the sister library [act](https://github.com/jamboree/act) to change ASIO style callback into await.
+
+```c++
+co2::coroutine<> session(asio::ip::tcp::socket sock)
+CO2_BEGIN(co2::coroutine<>, (sock),
+    char rbuf[1024];
+    std::size_t len;
+)
+{
+    CO2_TRY
+    {
+        std::cout << "connected: " << sock.remote_endpoint() << std::endl;
+        CO2_AWAIT_SET(len, act::read_some(sock, asio::buffer(rbuf)));
+        CO2_AWAIT(act::write(sock, asio::buffer(rbuf, len)));
+    }
+    CO2_CATCH (std::exception& e)
+    {
+        std::cout << "error: " << sock.remote_endpoint() << ": " << e.what() << std::endl;
+    }
+}
+CO2_END
+
+co2::coroutine<> server(asio::io_service& io, unsigned port)
+CO2_BEGIN(co2::coroutine<>, (io, port),
+    asio::ip::tcp::endpoint endpoint{asio::ip::tcp::v4(), port};
+    asio::ip::tcp::acceptor acceptor{io, endpoint};
+)
+{
+    std::cout << "server running at: " << endpoint << std::endl;
+    for ( ; ; )
+        CO2_AWAIT_LET(auto&& sock, act::accept(acceptor),
+        {
+            session(std::move(sock));
+        });
+}
+CO2_END
+```
+
 ## License
 
     Copyright (c) 2015 Jamboree
