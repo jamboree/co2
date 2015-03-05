@@ -90,6 +90,8 @@ namespace co2
                     break;
                 case generator_detail::tag::exception:
                     _data.exception.~exception_ptr();
+                default:
+                    break;
                 }
             }
 

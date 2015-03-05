@@ -10,6 +10,7 @@
 #include <atomic>
 #include <utility>
 #include <exception>
+#include <boost/config.hpp>
 #include <boost/assert.hpp>
 #include <boost/preprocessor/control/if.hpp>
 #include <boost/preprocessor/seq/for_each.hpp>
@@ -146,24 +147,24 @@ namespace co2 { namespace detail
     };
     
     template<class Promise, class F>
-    struct frame : resumable<Promise>
+    struct frame final : resumable<Promise>
     {
         F f;
 
         template<class Pack>
         frame(Pack&& pack) : f(std::forward<Pack>(pack))
         {
-            _next = F::_co2_start::value;
+            this->_next = F::_co2_start::value;
         }
 
         void run(coroutine<> const& coro) noexcept override
         {
-            f(static_cast<coroutine<Promise> const&>(coro), _next, _eh, &_tmp);
+            f(static_cast<coroutine<Promise> const&>(coro), this->_next, this->_eh, &this->_tmp);
         }
 
         void release(coroutine<> const& coro) noexcept override
         {
-            f(static_cast<coroutine<Promise> const&>(coro), ++_next, _eh, &_tmp);
+            f(static_cast<coroutine<Promise> const&>(coro), ++this->_next, this->_eh, &this->_tmp);
             delete this;
         }
     };
@@ -333,6 +334,42 @@ namespace co2
     }
 }
 
+#   if defined(BOOST_MSVC)
+#   define _impl_CO2_IS_EMPTY BOOST_PP_IS_EMPTY
+#   define _impl_CO2_PUSH_NAME_HIDDEN_WARNING                                   \
+    __pragma(warning(push))                                                     \
+    __pragma(warning(disable:4456))                                             \
+    /***/
+#   define _impl_CO2_POP_WARNING __pragma(warning(pop))
+#   else
+#   define _impl_CO2_PUSH_NAME_HIDDEN_WARNING
+#   define _impl_CO2_POP_WARNING
+    // The IS_EMPTY trick is from:
+    // http://gustedt.wordpress.com/2010/06/08/detect-empty-macro-arguments/
+    // IS_EMPTY {
+#   define _impl_CO2__ARG16(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, ...) _15
+#   define _impl_CO2_HAS_COMMA(...) _impl_CO2__ARG16(__VA_ARGS__, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0)
+#   define _impl_CO2_TRIGGER_PARENTHESIS_(...) ,
+
+#   define _impl_CO2_IS_EMPTY(...)                                              \
+    _impl_CO2_IS_EMPTY_IMPL(                                                    \
+        /* test if there is just one argument, eventually an empty one */       \
+        _impl_CO2_HAS_COMMA(__VA_ARGS__),                                       \
+        /* test if _impl_CO2_TRIGGER_PARENTHESIS_ together with the argument adds a comma */\
+        _impl_CO2_HAS_COMMA(_impl_CO2_TRIGGER_PARENTHESIS_ __VA_ARGS__),        \
+        /* test if the argument together with a parenthesis adds a comma */     \
+        _impl_CO2_HAS_COMMA(__VA_ARGS__ (/*empty*/)),                           \
+        /* test if placing it between _impl_CO2_TRIGGER_PARENTHESIS_ and the parenthesis adds a comma */\
+        _impl_CO2_HAS_COMMA(_impl_CO2_TRIGGER_PARENTHESIS_ __VA_ARGS__ (/*empty*/))\
+    )                                                                           \
+    /***/
+
+#   define _impl_CO2_PASTE5(_0, _1, _2, _3, _4) _0 ## _1 ## _2 ## _3 ## _4
+#   define _impl_CO2_IS_EMPTY_IMPL(_0, _1, _2, _3) _impl_CO2_HAS_COMMA(_impl_CO2_PASTE5(_IS_EMPTY_CASE_, _0, _1, _2, _3))
+#   define _impl_CO2_IS_EMPTY_CASE_0001 ,
+    // } IS_EMPTY
+#   endif
+
 #define _impl_CO2_AWAIT(ret, var, next)                                         \
 {                                                                               \
     using _co2_await = co2::detail::temp::traits<decltype(var)>;                \
@@ -372,11 +409,10 @@ _impl_CO2_AWAIT(([this](let) __VA_ARGS__), var, __COUNTER__)
 /***/
 
 #define CO2_TRY                                                                 \
-__pragma(warning(push))                                                         \
-__pragma(warning(disable:4456))                                                 \
+_impl_CO2_PUSH_NAME_HIDDEN_WARNING                                              \
 using _co2_prev_eh = _co2_curr_eh;                                              \
 using _co2_curr_eh = std::integral_constant<unsigned, __COUNTER__>;             \
-__pragma(warning(pop))                                                          \
+_impl_CO2_POP_WARNING                                                           \
 _co2_eh = _co2_curr_eh::value;                                                  \
 if (true)                                                                       \
 /***/
@@ -401,7 +437,7 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)
 #define _impl_CO2_TUPLE_FOR_EACH_EMPTY(macro, t)
 
 #define _impl_CO2_TUPLE_FOR_EACH(macro, t)                                      \
-    BOOST_PP_IF(BOOST_PP_IS_EMPTY t, _impl_CO2_TUPLE_FOR_EACH_EMPTY,            \
+    BOOST_PP_IF(_impl_CO2_IS_EMPTY t, _impl_CO2_TUPLE_FOR_EACH_EMPTY,           \
         _impl_CO2_TUPLE_FOR_EACH_IMPL)(macro, t)                                \
 /***/
 
@@ -433,6 +469,7 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)
                 case _co2_start::value:                                         \
                     CO2_AWAIT(_co2_promise.initial_suspend());                  \
                     using _co2_curr_eh = co2::detail::sentinel;                 \
+                    (void)_co2_curr_eh::value; /*suppress warning*/             \
 /***/
 
 #define CO2_END                                                                 \
