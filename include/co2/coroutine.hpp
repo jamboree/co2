@@ -114,14 +114,21 @@ namespace co2 { namespace detail
         };
     }
 
+    using sentinel = std::integral_constant<unsigned, ~1u>;
+
     struct resumable_base
     {
         temp::storage _tmp;
         std::atomic<unsigned> _use_count {1};
         unsigned _next;
-        unsigned _eh;
+        unsigned _eh = sentinel::value;
         virtual void run(coroutine<> const&) noexcept = 0;
         virtual void release(coroutine<> const&) noexcept = 0;
+
+        bool done() const noexcept
+        {
+            return _next == sentinel::value;
+        }
     };
 
     template<class Promise>
@@ -147,7 +154,6 @@ namespace co2 { namespace detail
         frame(Pack&& pack) : f(std::forward<Pack>(pack))
         {
             _next = F::_co2_start::value;
-            _eh = F::_co2_stop::value;
         }
 
         void run(coroutine<> const& coro) noexcept override
@@ -213,8 +219,13 @@ namespace co2
 
         ~coroutine()
         {
-            if (_ptr && _ptr->_use_count.fetch_sub(1, std::memory_order_relaxed) == 1)
-                _ptr->release(*this);
+            release_ptr();
+        }
+
+        void reset() noexcept
+        {
+            release_ptr();
+            _ptr = nullptr;
         }
 
         void swap(coroutine& other) noexcept
@@ -227,12 +238,28 @@ namespace co2
             return !!_ptr;
         }
 
+        bool done() const noexcept
+        {
+            return _ptr->done();
+        }
+
         void operator()() const noexcept
         {
             _ptr->run(*this);
         }
 
+        void* to_address() const noexcept
+        {
+            return _ptr;
+        }
+
     protected:
+
+        void release_ptr() noexcept
+        {
+            if (_ptr && _ptr->_use_count.fetch_sub(1, std::memory_order_relaxed) == 1)
+                _ptr->release(*this);
+        }
 
         detail::resumable_base* _ptr;
     };
@@ -292,6 +319,18 @@ namespace co2
             std::terminate();
         }
     };
+
+    template<class Promise>
+    inline bool operator==(coroutine<Promise> const& lhs, coroutine<Promise> const& rhs)
+    {
+        return lhs.to_address() == rhs.to_address();
+    }
+
+    template<class Promise>
+    inline bool operator!=(coroutine<Promise> const& lhs, coroutine<Promise> const& rhs)
+    {
+        return lhs.to_address() != rhs.to_address();
+    }
 }
 
 #define _impl_CO2_AWAIT(ret, var, next)                                         \
@@ -322,6 +361,8 @@ namespace co2
 _impl_CO2_AWAIT(([this](let) __VA_ARGS__), var, __COUNTER__)
 /***/
 
+#define CO2_YIELD(expr) CO2_AWAIT(_co2_promise.yield_value(expr))
+
 #define CO2_RETURN(...)                                                         \
 {                                                                               \
     _co2_next = _co2_stop::value;                                               \
@@ -345,7 +386,7 @@ else case _co2_curr_eh::value:                                                  
     try                                                                         \
     {                                                                           \
         _co2_eh = _co2_prev_eh::value;                                          \
-        std::rethrow_exception(_co2_ex);                                        \
+        std::rethrow_exception(std::move(_co2_ex));                             \
     }                                                                           \
     catch                                                                       \
 /***/
@@ -391,31 +432,31 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)
                 {                                                               \
                 case _co2_start::value:                                         \
                     CO2_AWAIT(_co2_promise.initial_suspend());                  \
-                    using _co2_curr_eh = _co2_stop;                             \
+                    using _co2_curr_eh = co2::detail::sentinel;                 \
 /***/
 
 #define CO2_END                                                                 \
-                    _co2_next = _co2_stop::value;                               \
+                    _co2_next = co2::detail::sentinel::value;                   \
                     co2::detail::final_result(&_co2_promise);                   \
-                    break;                                                      \
-                case _co2_stop::value:                                          \
-                    _co2_promise.set_exception(_co2_ex);                        \
                 }                                                               \
             }                                                                   \
             catch (...)                                                         \
             {                                                                   \
                 _co2_next = _co2_eh;                                            \
                 _co2_ex = std::current_exception();                             \
-                goto _co2_try_again;                                            \
+                if (_co2_next != co2::detail::sentinel::value)                  \
+                    goto _co2_try_again;                                        \
+                _co2_promise.set_exception(std::move(_co2_ex));                 \
             }                                                                   \
             return co2::detail::avoid_plain_return{};                           \
         }                                                                       \
-        using _co2_stop = std::integral_constant<unsigned, __COUNTER__>;        \
     };                                                                          \
     _co2_C coro(new co2::detail::frame<_co2_P, _co2_op>(std::move(pack)));      \
     coro();                                                                     \
     return coro.promise().get_return_object();                                  \
 }                                                                               \
 /***/
+
+#define CO2_RET(R, capture, ...) -> R CO2_BEGIN(R, capture, __VA_ARGS__)
 
 #endif
