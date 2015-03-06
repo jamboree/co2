@@ -107,9 +107,12 @@ namespace co2
             iterator() = default;
 
             explicit iterator(coroutine<promise_type> const& coro)
-                : _coro(coro)
+              : _coro(coro)
             {
-                increment();
+                if (_coro.done())
+                    _coro.reset();
+                else
+                    increment();
             }
 
         private:
