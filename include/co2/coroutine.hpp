@@ -122,7 +122,7 @@ namespace co2 { namespace detail
         temp::storage _tmp;
         std::atomic<unsigned> _use_count {1};
         unsigned _next;
-        unsigned _eh = sentinel::value;
+        unsigned _eh;
         virtual void run(coroutine<> const&) noexcept = 0;
         virtual void release(coroutine<> const&) noexcept = 0;
 
@@ -402,7 +402,7 @@ _impl_CO2_AWAIT(([this](let) __VA_ARGS__), var, __COUNTER__)
 
 #define CO2_RETURN(...)                                                         \
 {                                                                               \
-    _co2_next = _co2_stop::value;                                               \
+    _co2_next = co2::detail::sentinel::value;                                   \
     _co2_promise.set_result(__VA_ARGS__);                                       \
     return co2::detail::avoid_plain_return{};                                   \
 }                                                                               \
@@ -467,9 +467,9 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)
                 switch (_co2_next)                                              \
                 {                                                               \
                 case _co2_start::value:                                         \
-                    CO2_AWAIT(_co2_promise.initial_suspend());                  \
                     using _co2_curr_eh = co2::detail::sentinel;                 \
-                    (void)_co2_curr_eh::value; /*suppress warning*/             \
+                    _co2_eh = _co2_curr_eh::value;                              \
+                    CO2_AWAIT(_co2_promise.initial_suspend());                  \
 /***/
 
 #define CO2_END                                                                 \

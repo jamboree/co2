@@ -157,15 +157,18 @@ This example uses the sister library [act](https://github.com/jamboree/act) to c
 ```c++
 co2::coroutine<> session(asio::ip::tcp::socket sock)
 CO2_BEGIN(co2::coroutine<>, (sock),
-    char rbuf[1024];
+    char buf[1024];
     std::size_t len;
 )
 {
     CO2_TRY
     {
         std::cout << "connected: " << sock.remote_endpoint() << std::endl;
-        CO2_AWAIT_SET(len, act::read_some(sock, asio::buffer(rbuf)));
-        CO2_AWAIT(act::write(sock, asio::buffer(rbuf, len)));
+        for ( ; ; )
+        {
+            CO2_AWAIT_SET(len, act::read_some(sock, asio::buffer(buf)));
+            CO2_AWAIT(act::write(sock, asio::buffer(buf, len)));
+        }
     }
     CO2_CATCH (std::exception& e)
     {
