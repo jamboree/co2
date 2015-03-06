@@ -460,13 +460,20 @@ _impl_CO2_AWAIT(([this](let) __VA_ARGS__), var, __COUNTER__)
 #define CO2_RETURN(...)                                                         \
 {                                                                               \
     _co2_next = co2::detail::sentinel::value;                                   \
-    co2::detail::void_ _co2_v;                                                  \
-    co2::detail::set_result(_co2_promise, (_co2_v, ##__VA_ARGS__, _co2_v));     \
+    _co2_promise.set_result(__VA_ARGS__);                                       \
     return co2::detail::avoid_plain_return{};                                   \
 }                                                                               \
 /***/
 
-#define CO2_AWAIT_RETURN(expr) _impl_CO2_AWAIT(CO2_RETURN, expr, __COUNTER__)
+#define CO2_RETURN_FROM(...)                                                    \
+{                                                                               \
+    _co2_next = co2::detail::sentinel::value;                                   \
+    co2::detail::set_result(_co2_promise, (__VA_ARGS__, co2::detail::void_{})); \
+    return co2::detail::avoid_plain_return{};                                   \
+}                                                                               \
+/***/
+
+#define CO2_AWAIT_RETURN(expr) _impl_CO2_AWAIT(CO2_RETURN_FROM, expr, __COUNTER__)
 
 #define CO2_TRY                                                                 \
 _impl_CO2_PUSH_NAME_HIDDEN_WARNING                                              \
@@ -490,6 +497,7 @@ else case _co2_curr_eh::value:                                                  
 #define _impl_CO2_TYPE_MEMBER(r, _, e) using BOOST_PP_CAT(e, _CO2_t) = decltype(e);
 #define _impl_CO2_AUTO_MEMBER(r, _, e) BOOST_PP_CAT(e, _CO2_t) e;
 #define _impl_CO2_FWD_MEMBER(r, _, e) std::forward<decltype(e)>(e),
+#define _impl_CO2_USE_MEMBER(r, _, e) using _co2_pack::e;
 
 #define _impl_CO2_TUPLE_FOR_EACH_IMPL(macro, t)                                 \
 BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)
@@ -513,6 +521,7 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)
     _co2_pack pack = {_impl_CO2_TUPLE_FOR_EACH(_impl_CO2_FWD_MEMBER, capture)}; \
     struct _co2_op : _co2_pack                                                  \
     {                                                                           \
+        _impl_CO2_TUPLE_FOR_EACH(_impl_CO2_USE_MEMBER, capture)                 \
         __VA_ARGS__                                                             \
         _co2_op(_co2_pack&& pack) : _co2_pack(std::move(pack)) {}               \
         using _co2_start = std::integral_constant<unsigned, __COUNTER__>;       \

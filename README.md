@@ -129,6 +129,7 @@ __Macros__
 * `CO2_AWAIT_RETURN`
 * `CO2_YIELD`
 * `CO2_RETURN`
+* `CO2_RETURN_FROM`
 * `CO2_TRY`
 * `CO2_CATCH`
 

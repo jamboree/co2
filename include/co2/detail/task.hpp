@@ -45,27 +45,27 @@ namespace co2 { namespace task_detail
         void set_result(U&& u)
         {
             new(&_data.value) val_t(std::forward<U>(u));
-            _tag.store(tag::value, std::memory_order_release);
-            notify();
+            Base::_tag.store(tag::value, std::memory_order_release);
+            Base::notify();
         }
 
         void set_exception(std::exception_ptr const& e)
         {
             new(&_data.exception) std::exception_ptr(e);
-            _tag.store(tag::exception, std::memory_order_release);
-            notify();
+            Base::_tag.store(tag::exception, std::memory_order_release);
+            Base::notify();
         }
 
         T&& get()
         {
-            if (_tag.load(std::memory_order_acquire) == tag::exception)
+            if (Base::_tag.load(std::memory_order_acquire) == tag::exception)
                 std::rethrow_exception(_data.exception);
-            return static_cast<T&&>(_val);
+            return static_cast<T&&>(_data.value);
         }
 
         ~promise()
         {
-            switch (_tag.load(std::memory_order_relaxed))
+            switch (Base::_tag.load(std::memory_order_relaxed))
             {
             case tag::value:
                 _data.value.~val_t();
@@ -85,20 +85,20 @@ namespace co2 { namespace task_detail
     {
         void set_result()
         {
-            _tag.store(tag::value, std::memory_order_release);
-            notify();
+            Base::_tag.store(tag::value, std::memory_order_release);
+            Base::notify();
         }
 
         void set_exception(std::exception_ptr const& e)
         {
             _e = e;
-            _tag.store(tag::exception, std::memory_order_release);
-            notify();
+            Base::_tag.store(tag::exception, std::memory_order_release);
+            Base::notify();
         }
 
         void get()
         {
-            if (_tag.load(std::memory_order_acquire) == tag::exception)
+            if (Base::_tag.load(std::memory_order_acquire) == tag::exception)
                 std::rethrow_exception(_e);
         }
 
