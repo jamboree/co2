@@ -85,7 +85,7 @@ namespace co2 { namespace detail
         };
 
         template<class T>
-        struct traits : traits_non_ref<T, !(sizeof(T) > bytes) > {};
+        struct traits : traits_non_ref<T, !(sizeof(T) > bytes)> {};
 
         template<class T>
         struct traits<T&>
@@ -186,6 +186,19 @@ namespace co2 { namespace detail
     inline void final_result(void*)
     {
         BOOST_ASSERT_MSG(false, "missing return statement");
+    }
+
+    struct void_to_true
+    {
+        operator bool() const noexcept
+        {
+            return true;
+        }
+    };
+
+    bool operator,(bool b, void_to_true) noexcept
+    {
+        return b;
     }
 }}
 
@@ -332,6 +345,32 @@ namespace co2
     {
         return lhs.to_address() != rhs.to_address();
     }
+
+    struct atomic_coroutine_handle
+    {
+        atomic_coroutine_handle() : _ptr{nullptr} {}
+
+        atomic_coroutine_handle(atomic_coroutine_handle&&) = delete;
+
+        coroutine<> exchange(coroutine<> const& coro)
+        {
+            auto p = static_cast<detail::resumable_base*>(coro.to_address());
+            p->_use_count.fetch_add(1, std::memory_order_relaxed);
+            return coroutine<>(_ptr.exchange(p, std::memory_order_relaxed));
+        }
+
+        coroutine<> exchange_null()
+        {
+            return coroutine<>(_ptr.exchange(nullptr, std::memory_order_relaxed));
+        }
+
+        ~atomic_coroutine_handle()
+        {
+            coroutine<>(_ptr.load(std::memory_order_relaxed));
+        }
+
+        std::atomic<detail::resumable_base*> _ptr;
+    };
 }
 
 #   if defined(BOOST_MSVC)
@@ -372,13 +411,14 @@ namespace co2
 
 #define _impl_CO2_AWAIT(ret, var, next)                                         \
 {                                                                               \
-    using _co2_await = co2::detail::temp::traits<decltype(var)>;                \
+    using _co2_await = co2::detail::temp::traits<decltype((var))>;              \
     _co2_await::create(_co2_tmp, var);                                          \
     if (!_co2_await::get(_co2_tmp).await_ready())                               \
     {                                                                           \
         _co2_next = next;                                                       \
-        _co2_await::get(_co2_tmp).await_suspend(_co2_coro);                     \
-        return co2::detail::avoid_plain_return{};                               \
+        if (_co2_await::get(_co2_tmp).await_suspend(_co2_coro),                 \
+            co2::detail::void_to_true{})                                        \
+            return co2::detail::avoid_plain_return{};                           \
     }                                                                           \
     case next:                                                                  \
     if (_co2_promise.cancellation_requested())                                  \
@@ -407,6 +447,8 @@ _impl_CO2_AWAIT(([this](let) __VA_ARGS__), var, __COUNTER__)
     return co2::detail::avoid_plain_return{};                                   \
 }                                                                               \
 /***/
+
+#define CO2_AWAIT_RETURN(expr) _impl_CO2_AWAIT(CO2_RETURN, expr, __COUNTER__)
 
 #define CO2_TRY                                                                 \
 _impl_CO2_PUSH_NAME_HIDDEN_WARNING                                              \

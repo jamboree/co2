@@ -8,6 +8,7 @@
 #define CO2_GENERATOR_HPP_INCLUDED
 
 #include <co2/coroutine.hpp>
+#include <co2/detail/storage.hpp>
 #include <boost/iterator/iterator_facade.hpp>
 
 namespace co2 { namespace generator_detail
@@ -15,16 +16,6 @@ namespace co2 { namespace generator_detail
     enum class tag
     {
         null, value, exception
-    };
-
-    template<class T>
-    union storage
-    {
-        std::exception_ptr exception;
-        T value;
-
-        storage() {}
-        ~storage() {}
     };
 }}
 
@@ -35,6 +26,8 @@ namespace co2
     {
         struct promise_type
         {
+            using val_t = typename detail::wrap_reference<T>::type;
+
             generator get_return_object()
             {
                 return generator(*this);
@@ -59,14 +52,17 @@ namespace co2
 
             void set_exception(std::exception_ptr const& e)
             {
+                reset_value();
                 _tag = generator_detail::tag::exception;
                 new(&_data) std::exception_ptr(e);
             }
 
-            suspend_always yield_value(T val)
+            template<class U>
+            suspend_always yield_value(U&& u)
             {
+                reset_value();
                 _tag = generator_detail::tag::value;
-                new(&_data) T(std::forward<T>(val));
+                new(&_data) val_t(std::forward<U>(u));
                 return {};
             }
 
@@ -86,7 +82,7 @@ namespace co2
                 switch (_tag)
                 {
                 case generator_detail::tag::value:
-                    _data.value.~T();
+                    _data.value.~val_t();
                     break;
                 case generator_detail::tag::exception:
                     _data.exception.~exception_ptr();
@@ -97,7 +93,13 @@ namespace co2
 
         private:
 
-            generator_detail::storage<T> _data;
+            void reset_value()
+            {
+                if (_tag == generator_detail::tag::value)
+                    _data.value.~val_t();
+            }
+
+            detail::storage<val_t> _data;
             generator_detail::tag _tag = generator_detail::tag::null;
         };
 
@@ -145,6 +147,11 @@ namespace co2
 
         generator& operator=(generator&& other) = default;
 
+        void swap(generator& other) noexcept
+        {
+            _coro.swap(other._coro);
+        }
+
         iterator begin()
         {
             if (_coro.done())
@@ -179,6 +186,12 @@ namespace co2
 
         coroutine<promise_type> _coro;
     };
+
+    template<class T>
+    inline void swap(generator<T>& a, generator<T>& b) noexcept
+    {
+        a.swap(b);
+    }
 }
 
 #endif
