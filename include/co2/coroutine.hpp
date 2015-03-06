@@ -425,11 +425,11 @@ namespace co2
     // } IS_EMPTY
 #   endif
 
-#define _impl_CO2_AWAIT(ret, var, next)                                         \
+#define _impl_CO2_AWAIT(ret, expr, next)                                        \
 {                                                                               \
-    using _co2_await =                                                          \
-        co2::detail::temp::traits<decltype(co2::detail::unrvref(var))>;         \
-    _co2_await::create(_co2_tmp, var);                                          \
+    using _co2_expr_t = decltype(co2::detail::unrvref(expr));                   \
+    using _co2_await = co2::detail::temp::traits<_co2_expr_t>;                  \
+    _co2_await::create(_co2_tmp, expr);                                         \
     if (!_co2_await::get(_co2_tmp).await_ready())                               \
     {                                                                           \
         _co2_next = next;                                                       \
@@ -444,15 +444,15 @@ namespace co2
         _co2_await::reset(_co2_tmp);                                            \
         return co2::detail::avoid_plain_return{};                               \
     }                                                                           \
-    co2::detail::temp::auto_reset<decltype(var)> _co2_reset = {_co2_tmp};       \
+    co2::detail::temp::auto_reset<_co2_expr_t> _co2_reset = {_co2_tmp};         \
     ret (_co2_await::get(_co2_tmp).await_resume());                             \
 }                                                                               \
 /***/
 
-#define CO2_AWAIT_SET(ret, var) _impl_CO2_AWAIT(ret =, var, __COUNTER__)
+#define CO2_AWAIT_SET(var, expr) _impl_CO2_AWAIT(var =, expr, __COUNTER__)
 #define CO2_AWAIT(expr) _impl_CO2_AWAIT(, expr, __COUNTER__)
-#define CO2_AWAIT_LET(let, var, ...)                                            \
-_impl_CO2_AWAIT(([this](let) __VA_ARGS__), var, __COUNTER__)
+#define CO2_AWAIT_LET(let, expr, ...)                                           \
+_impl_CO2_AWAIT(([this](let) __VA_ARGS__), expr, __COUNTER__)
 /***/
 
 #define CO2_YIELD(expr) CO2_AWAIT(_co2_promise.yield_value(expr))

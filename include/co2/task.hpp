@@ -8,9 +8,7 @@
 #define CO2_TASK_HPP_INCLUDED
 
 #include <atomic>
-#include <vector>
-#include <type_traits>
-#include <co2/coroutine.hpp>
+#include <boost/assert.hpp>
 #include <co2/detail/task.hpp>
 
 namespace co2 { namespace task_detail
