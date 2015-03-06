@@ -109,10 +109,7 @@ namespace co2
             explicit iterator(coroutine<promise_type> const& coro)
               : _coro(coro)
             {
-                if (_coro.done())
-                    _coro.reset();
-                else
-                    increment();
+                increment();
             }
 
         private:
@@ -140,7 +137,7 @@ namespace co2
             coroutine<promise_type> _coro;
         };
 
-        generator() = default;
+        generator() : _coro(get_empty_frame()) {}
 
         explicit generator(promise_type& p) : _coro(&p) {}
 
@@ -150,6 +147,8 @@ namespace co2
 
         iterator begin()
         {
+            if (_coro.done())
+                return {};
             return iterator(_coro);
         }
 
@@ -159,6 +158,24 @@ namespace co2
         }
 
     private:
+
+        struct empty_frame final : detail::resumable<promise_type>
+        {
+            empty_frame()
+            {
+                this->_next = detail::sentinel::value;
+            }
+
+            void run(coroutine<> const& coro) noexcept override {}
+
+            void release(coroutine<> const& coro) noexcept override {}
+        };
+
+        static empty_frame* get_empty_frame()
+        {
+            static empty_frame ret;
+            return &ret;
+        }
 
         coroutine<promise_type> _coro;
     };
