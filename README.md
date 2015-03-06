@@ -53,7 +53,8 @@ You may find that repeating the return_type twice is annoying, as C++11 adds tra
 
 Inside the coroutine body, there are some restrictions:
 * auto local variables are not allowed - you should specify them in local variables section of `CO2_BEGIN`
-* `return`, try-catch should be replace with the corresponding macros
+* `return` should be replaced with `CO2_RETURN`
+* try-catch block surrouding `await` statements should be replaced with `CO2_TRY` & `CO2_CATCH`
 * identifiers starting with `_co2_` are reserved for this library
 
 __return statement__
@@ -71,7 +72,7 @@ Note that only the first `catch` clause needs to be spelled as `CO2_CATCH`, the 
 
 ### await & yield
 
-In _CO2_, `await` is implemented as a statement instead of an expression due to the emulation restriction, and it has 3 variants: `CO2_AWAIT`, `CO2_AWAIT_SET` and `CO2_AWAIT_LET`.
+In _CO2_, `await` is implemented as a statement instead of an expression due to the emulation limitation, and it has 4 variants: `CO2_AWAIT`, `CO2_AWAIT_SET`, `CO2_AWAIT_LET` and `CO2_AWAIT_RETURN`.
 
 * `CO2_AWAIT(expr)`
 
@@ -91,6 +92,10 @@ CO2_AWAIT_LET(auto i, task,
 });
 ```
 
+* `CO2_AWAIT_RETURN(expr)`
+
+Equivalent to `return await expr`.
+
 As `yield` is defined in N4286, _CO2_ also provides the corresponding `CO2_YIELD`.
 `CO2_YIELD(expr)` is equivalent to `CO2_AWAIT(<this-promise>.yield_value(expr))`.
 
@@ -103,13 +108,16 @@ It's safe if `await` is an expression as in N4286, but in _CO2_, `CO2_AWAIT(some
 ## Difference from N4286
 
 * Unlike `coroutine_handle` in N4286, `coroutine` is ref-counted.
-* No `coroutine_traits`, _CO2_ always use `return_type::promise_type` for the promise.
+* No `coroutine_traits`, _CO2_ always use `return_type::promise_type` for the promise and `new` for allocation.
 * `promise_type::final_suspend` is ignored.
 
 ## Reference
 
 __Headers__
 * `#include <co2/coroutine.hpp>`
+* `#include <co2/generator.hpp>`
+* `#include <co2/task.hpp>`
+* `#include <co2/shared_task.hpp>`
 
 __Macros__
 * `CO2_BEGIN`
@@ -118,6 +126,7 @@ __Macros__
 * `CO2_AWAIT`
 * `CO2_AWAIT_SET`
 * `CO2_AWAIT_LET`
+* `CO2_AWAIT_RETURN`
 * `CO2_YIELD`
 * `CO2_RETURN`
 * `CO2_TRY`
@@ -126,6 +135,8 @@ __Macros__
 __Classes__
 * `co2::coroutine<Promise>`
 * `co2::generator<T>`
+* `co2::task<T>`
+* `co2::shared_task<T>`
 * `co2::suspend_always`
 * `co2::suspend_never`
 
@@ -155,8 +166,7 @@ for (auto i : range(1, 10))
 This example uses the sister library [act](https://github.com/jamboree/act) to change ASIO style callback into await.
 
 ```c++
-co2::coroutine<> session(asio::ip::tcp::socket sock)
-CO2_BEGIN(co2::coroutine<>, (sock),
+auto session(asio::ip::tcp::socket sock) CO2_RET(co2::task<>, (sock),
     char buf[1024];
     std::size_t len;
 )
@@ -174,11 +184,9 @@ CO2_BEGIN(co2::coroutine<>, (sock),
     {
         std::cout << "error: " << sock.remote_endpoint() << ": " << e.what() << std::endl;
     }
-}
-CO2_END
+} CO2_END
 
-co2::coroutine<> server(asio::io_service& io, unsigned port)
-CO2_BEGIN(co2::coroutine<>, (io, port),
+auto server(asio::io_service& io, unsigned port) CO2_RET(co2::task<>, (io, port),
     asio::ip::tcp::endpoint endpoint{asio::ip::tcp::v4(), port};
     asio::ip::tcp::acceptor acceptor{io, endpoint};
 )
@@ -189,8 +197,7 @@ CO2_BEGIN(co2::coroutine<>, (io, port),
         {
             session(std::move(sock));
         });
-}
-CO2_END
+} CO2_END
 ```
 
 ## License

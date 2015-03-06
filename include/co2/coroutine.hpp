@@ -172,10 +172,27 @@ namespace co2 { namespace detail
     template<class R>
     using promise_t = typename R::promise_type;
 
+    template<class T>
+    T unrvref(T&&);
+
     struct avoid_plain_return
     {
         explicit avoid_plain_return() = default;
     };
+
+    struct void_
+    {
+        operator bool() const noexcept
+        {
+            return true;
+        }
+    };
+
+    template<class RHS>
+    inline RHS&& operator,(RHS&& rhs, void_) noexcept
+    {
+        return static_cast<RHS&&>(rhs);
+    }
 
     template<class Promise>
     inline auto final_result(Promise* p) -> decltype(p->set_result())
@@ -188,17 +205,16 @@ namespace co2 { namespace detail
         BOOST_ASSERT_MSG(false, "missing return statement");
     }
 
-    struct void_to_true
+    template<class Promise, class T>
+    inline void set_result(Promise& p, T&& t)
     {
-        operator bool() const noexcept
-        {
-            return true;
-        }
-    };
+        p.set_result(std::forward<T>(t));
+    }
 
-    bool operator,(bool b, void_to_true) noexcept
+    template<class Promise>
+    inline void set_result(Promise& p, void_)
     {
-        return b;
+        p.set_result();
     }
 }}
 
@@ -411,13 +427,14 @@ namespace co2
 
 #define _impl_CO2_AWAIT(ret, var, next)                                         \
 {                                                                               \
-    using _co2_await = co2::detail::temp::traits<decltype((var))>;              \
+    using _co2_await =                                                          \
+        co2::detail::temp::traits<decltype(co2::detail::unrvref(var))>;         \
     _co2_await::create(_co2_tmp, var);                                          \
     if (!_co2_await::get(_co2_tmp).await_ready())                               \
     {                                                                           \
         _co2_next = next;                                                       \
         if (_co2_await::get(_co2_tmp).await_suspend(_co2_coro),                 \
-            co2::detail::void_to_true{})                                        \
+            co2::detail::void_{})                                               \
             return co2::detail::avoid_plain_return{};                           \
     }                                                                           \
     case next:                                                                  \
@@ -443,7 +460,8 @@ _impl_CO2_AWAIT(([this](let) __VA_ARGS__), var, __COUNTER__)
 #define CO2_RETURN(...)                                                         \
 {                                                                               \
     _co2_next = co2::detail::sentinel::value;                                   \
-    _co2_promise.set_result(__VA_ARGS__);                                       \
+    co2::detail::void_ _co2_v;                                                  \
+    co2::detail::set_result(_co2_promise, (_co2_v, ##__VA_ARGS__, _co2_v));     \
     return co2::detail::avoid_plain_return{};                                   \
 }                                                                               \
 /***/

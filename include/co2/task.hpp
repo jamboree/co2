@@ -42,9 +42,11 @@ namespace co2
     struct shared_task;
 
     template<class T = void>
-    struct task : task_detail::impl<task<T>, T, T, task_detail::unique_promise_base>
+    struct task
+      : task_detail::impl<task<T>, T, T, task_detail::unique_promise_base>
     {
-        using base_type = task_detail::impl<task<T>, T, T, task_detail::unique_promise_base>;
+        using base_type =
+            task_detail::impl<task<T>, T, T, task_detail::unique_promise_base>;
 
         using base_type::base_type;
 
