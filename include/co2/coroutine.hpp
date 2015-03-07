@@ -223,13 +223,13 @@ namespace co2
     template<>
     struct coroutine<void>
     {
+        using handle_type = detail::resumable_base*;
+
         struct promise_type;
 
         coroutine() noexcept : _ptr() {}
 
-        coroutine(std::nullptr_t) noexcept : _ptr() {}
-
-        explicit coroutine(detail::resumable_base* ptr) noexcept : _ptr(ptr) {}
+        explicit coroutine(handle_type handle) noexcept : _ptr(handle) {}
 
         coroutine(coroutine const& other) : _ptr(other._ptr)
         {
@@ -249,12 +249,12 @@ namespace co2
 
         ~coroutine()
         {
-            release_ptr();
+            release_frame();
         }
 
         void reset() noexcept
         {
-            release_ptr();
+            release_frame();
             _ptr = nullptr;
         }
 
@@ -283,9 +283,16 @@ namespace co2
             return _ptr;
         }
 
+        handle_type release_handle() noexcept
+        {
+            auto handle = _ptr;
+            _ptr = nullptr;
+            return handle;
+        }
+
     protected:
 
-        void release_ptr() noexcept
+        void release_frame() noexcept
         {
             if (_ptr && _ptr->_use_count.fetch_sub(1, std::memory_order_relaxed) == 1)
                 _ptr->release(*this);
@@ -364,28 +371,26 @@ namespace co2
 
     struct atomic_coroutine_handle
     {
-        atomic_coroutine_handle() : _ptr{nullptr} {}
+        atomic_coroutine_handle() : _p{nullptr} {}
 
         atomic_coroutine_handle(atomic_coroutine_handle&&) = delete;
 
-        coroutine<> exchange(coroutine<> const& coro)
+        coroutine<> exchange(coroutine<> coro)
         {
-            auto p = static_cast<detail::resumable_base*>(coro.to_address());
-            p->_use_count.fetch_add(1, std::memory_order_relaxed);
-            return coroutine<>(_ptr.exchange(p, std::memory_order_relaxed));
+            return coroutine<>(_p.exchange(coro.release_handle(), std::memory_order_relaxed));
         }
 
         coroutine<> exchange_null()
         {
-            return coroutine<>(_ptr.exchange(nullptr, std::memory_order_relaxed));
+            return coroutine<>(_p.exchange(nullptr, std::memory_order_relaxed));
         }
 
         ~atomic_coroutine_handle()
         {
-            coroutine<>(_ptr.load(std::memory_order_relaxed));
+            coroutine<>(_p.load(std::memory_order_relaxed));
         }
 
-        std::atomic<detail::resumable_base*> _ptr;
+        std::atomic<coroutine<>::handle_type> _p;
     };
 }
 
