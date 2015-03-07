@@ -11,14 +11,6 @@
 #include <co2/detail/storage.hpp>
 #include <boost/iterator/iterator_facade.hpp>
 
-namespace co2 { namespace generator_detail
-{
-    enum class tag
-    {
-        null, value, exception
-    };
-}}
-
 namespace co2
 {
     template<class T>
@@ -53,15 +45,20 @@ namespace co2
             void set_exception(std::exception_ptr const& e)
             {
                 reset_value();
-                _tag = generator_detail::tag::exception;
+                _tag = detail::tag::exception;
                 new(&_data) std::exception_ptr(e);
+            }
+
+            suspend_always yield_value(T&& t)
+            {
+                return yield_value<T>(std::forward<T>(t));
             }
 
             template<class U>
             suspend_always yield_value(U&& u)
             {
                 reset_value();
-                _tag = generator_detail::tag::value;
+                _tag = detail::tag::value;
                 new(&_data) val_t(std::forward<U>(u));
                 return {};
             }
@@ -73,7 +70,7 @@ namespace co2
 
             void rethrow_exception()
             {
-                if (_tag == generator_detail::tag::exception)
+                if (_tag == detail::tag::exception)
                     std::rethrow_exception(_data.exception);
             }
 
@@ -81,10 +78,10 @@ namespace co2
             {
                 switch (_tag)
                 {
-                case generator_detail::tag::value:
+                case detail::tag::value:
                     _data.value.~val_t();
                     break;
-                case generator_detail::tag::exception:
+                case detail::tag::exception:
                     _data.exception.~exception_ptr();
                 default:
                     break;
@@ -95,12 +92,12 @@ namespace co2
 
             void reset_value()
             {
-                if (_tag == generator_detail::tag::value)
+                if (_tag == detail::tag::value)
                     _data.value.~val_t();
             }
 
             detail::storage<val_t> _data;
-            generator_detail::tag _tag = generator_detail::tag::null;
+            detail::tag _tag = detail::tag::null;
         };
 
         struct iterator

@@ -13,10 +13,7 @@
 
 namespace co2 { namespace task_detail
 {
-    enum class tag
-    {
-        null, value, exception
-    };
+    using detail::tag;
 
     struct promise_base
     {
@@ -40,6 +37,11 @@ namespace co2 { namespace task_detail
     struct promise : Base
     {
         using val_t = typename detail::wrap_reference<T>::type;
+
+        void set_result(T&& t)
+        {
+            set_result<T>(std::forward<T>(t));
+        }
 
         template<class U>
         void set_result(U&& u)

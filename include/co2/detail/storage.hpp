@@ -23,7 +23,7 @@ namespace co2 { namespace detail
     {
         using type = std::reference_wrapper<T>;
     };
-    
+
     template<class T>
     union storage
     {
@@ -32,6 +32,11 @@ namespace co2 { namespace detail
 
         storage() {}
         ~storage() {}
+    };
+
+    enum class tag
+    {
+        null, value, exception
     };
 }}
 

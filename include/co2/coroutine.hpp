@@ -455,7 +455,7 @@ namespace co2
 _impl_CO2_AWAIT(([this](let) __VA_ARGS__), expr, __COUNTER__)
 /***/
 
-#define CO2_YIELD(expr) CO2_AWAIT(_co2_promise.yield_value(expr))
+#define CO2_YIELD(...) CO2_AWAIT(_co2_promise.yield_value(__VA_ARGS__))
 
 #define CO2_RETURN(...)                                                         \
 {                                                                               \
@@ -494,8 +494,7 @@ else case _co2_curr_eh::value:                                                  
     catch                                                                       \
 /***/
 
-#define _impl_CO2_TYPE_MEMBER(r, _, e) using BOOST_PP_CAT(e, _CO2_t) = decltype(e);
-#define _impl_CO2_AUTO_MEMBER(r, _, e) BOOST_PP_CAT(e, _CO2_t) e;
+#define _impl_CO2_DECL_MEMBER(r, _, e) decltype(e) e;
 #define _impl_CO2_FWD_MEMBER(r, _, e) std::forward<decltype(e)>(e),
 #define _impl_CO2_USE_MEMBER(r, _, e) using _co2_pack::e;
 
@@ -513,10 +512,9 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)
 {                                                                               \
     using _co2_P = co2::detail::promise_t<R>;                                   \
     using _co2_C = co2::coroutine<_co2_P>;                                      \
-    _impl_CO2_TUPLE_FOR_EACH(_impl_CO2_TYPE_MEMBER, capture)                    \
     struct _co2_pack                                                            \
     {                                                                           \
-        _impl_CO2_TUPLE_FOR_EACH(_impl_CO2_AUTO_MEMBER, capture)                \
+        _impl_CO2_TUPLE_FOR_EACH(_impl_CO2_DECL_MEMBER, capture)                \
     };                                                                          \
     _co2_pack pack = {_impl_CO2_TUPLE_FOR_EACH(_impl_CO2_FWD_MEMBER, capture)}; \
     struct _co2_op : _co2_pack                                                  \
