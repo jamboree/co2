@@ -21,6 +21,12 @@ namespace co2
 {
     template<class Promise = void>
     struct coroutine;
+
+    template<class R>
+    struct coroutine_traits
+    {
+        using promise_type = typename R::promise_type;
+    };
     
     template<bool flag>
     struct suspend
@@ -169,8 +175,8 @@ namespace co2 { namespace detail
         }
     };
     
-    template<class R>
-    using promise_t = typename R::promise_type;
+    template<class T>
+    using promise_t = typename T::promise_type;
 
     template<class T>
     T unrvref(T&&);
@@ -216,10 +222,61 @@ namespace co2 { namespace detail
     {
         p.set_result();
     }
+
+    template<class T>
+    inline auto await_ready(T& t) -> decltype(t.await_ready())
+    {
+        return t.await_ready();
+    }
+
+    template<class T, class F>
+    inline auto await_suspend(T& t, F&& f) ->
+        decltype(t.await_suspend(std::forward<F>(f)))
+    {
+        return t.await_suspend(std::forward<F>(f));
+    }
+
+    template<class T>
+    inline auto await_resume(T& t) -> decltype(t.await_resume())
+    {
+        return t.await_resume();
+    }
+
+    struct await_ready_fn
+    {
+        template<class T>
+        auto operator()(T& t) const -> decltype(await_ready(t))
+        {
+            return await_ready(t);
+        }
+    };
+
+    struct await_suspend_fn
+    {
+        template<class T, class F>
+        auto operator()(T& t, F&& f) const ->
+            decltype(await_suspend(t, std::forward<F>(f)))
+        {
+            return await_suspend(t, std::forward<F>(f));
+        }
+    };
+
+    struct await_resume_fn
+    {
+        template<class T>
+        auto operator()(T& t) const -> decltype(await_resume(t))
+        {
+            return await_resume(t);
+        }
+    };
 }}
 
 namespace co2
 {
+    constexpr detail::await_ready_fn await_ready{};
+    constexpr detail::await_suspend_fn await_suspend{};
+    constexpr detail::await_resume_fn await_resume{};
+
     template<>
     struct coroutine<void>
     {
@@ -432,25 +489,25 @@ namespace co2
 
 #define _impl_CO2_AWAIT(ret, expr, next)                                        \
 {                                                                               \
-    using _co2_expr_t = decltype(co2::detail::unrvref(expr));                   \
-    using _co2_await = co2::detail::temp::traits<_co2_expr_t>;                  \
+    using _co2_expr_t = decltype(::co2::detail::unrvref(expr));                 \
+    using _co2_await = ::co2::detail::temp::traits<_co2_expr_t>;                \
     _co2_await::create(_co2_tmp, expr);                                         \
-    if (!_co2_await::get(_co2_tmp).await_ready())                               \
+    if (!::co2::await_ready(_co2_await::get(_co2_tmp)))                         \
     {                                                                           \
         _co2_next = next;                                                       \
-        if (_co2_await::get(_co2_tmp).await_suspend(_co2_coro),                 \
-            co2::detail::void_{})                                               \
-            return co2::detail::avoid_plain_return{};                           \
+        if (::co2::await_suspend(_co2_await::get(_co2_tmp), _co2_coro),         \
+            ::co2::detail::void_{})                                             \
+            return ::co2::detail::avoid_plain_return{};                         \
     }                                                                           \
     case next:                                                                  \
     if (_co2_promise.cancellation_requested())                                  \
     {                                                                           \
         case __COUNTER__:                                                       \
         _co2_await::reset(_co2_tmp);                                            \
-        return co2::detail::avoid_plain_return{};                               \
+        return ::co2::detail::avoid_plain_return{};                             \
     }                                                                           \
-    co2::detail::temp::auto_reset<_co2_expr_t> _co2_reset = {_co2_tmp};         \
-    ret (_co2_await::get(_co2_tmp).await_resume());                             \
+    ::co2::detail::temp::auto_reset<_co2_expr_t> _co2_reset = {_co2_tmp};       \
+    ret (::co2::await_resume(_co2_await::get(_co2_tmp)));                       \
 }                                                                               \
 /***/
 
@@ -464,17 +521,17 @@ _impl_CO2_AWAIT(([this](let) __VA_ARGS__), expr, __COUNTER__)
 
 #define CO2_RETURN(...)                                                         \
 {                                                                               \
-    _co2_next = co2::detail::sentinel::value;                                   \
+    _co2_next = ::co2::detail::sentinel::value;                                 \
     _co2_promise.set_result(__VA_ARGS__);                                       \
-    return co2::detail::avoid_plain_return{};                                   \
+    return ::co2::detail::avoid_plain_return{};                                 \
 }                                                                               \
 /***/
 
 #define CO2_RETURN_FROM(...)                                                    \
 {                                                                               \
-    _co2_next = co2::detail::sentinel::value;                                   \
-    co2::detail::set_result(_co2_promise, (__VA_ARGS__, co2::detail::void_{})); \
-    return co2::detail::avoid_plain_return{};                                   \
+    _co2_next = ::co2::detail::sentinel::value;                                 \
+    ::co2::detail::set_result(_co2_promise, (__VA_ARGS__, ::co2::detail::void_{}));\
+    return ::co2::detail::avoid_plain_return{};                                 \
 }                                                                               \
 /***/
 
@@ -499,9 +556,10 @@ else case _co2_curr_eh::value:                                                  
     catch                                                                       \
 /***/
 
-#define _impl_CO2_DECL_MEMBER(r, _, e) decltype(e) e;
-#define _impl_CO2_FWD_MEMBER(r, _, e) std::forward<decltype(e)>(e),
-#define _impl_CO2_USE_MEMBER(r, _, e) using _co2_pack::e;
+#define _impl_CO2_TYPE_PARAM(r, _, e) , decltype(e)
+#define _impl_CO2_DECL_PARAM(r, _, e) decltype(e) e;
+#define _impl_CO2_FWD_PARAM(r, _, e) std::forward<decltype(e)>(e),
+#define _impl_CO2_USE_PARAM(r, _, e) using _co2_pack::e;
 
 #define _impl_CO2_TUPLE_FOR_EACH_IMPL(macro, t)                                 \
 BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)
@@ -515,20 +573,21 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)
 
 #define CO2_BEGIN(R, capture, ...)                                              \
 {                                                                               \
-    using _co2_P = co2::detail::promise_t<R>;                                   \
-    using _co2_C = co2::coroutine<_co2_P>;                                      \
+    using _co2_T = ::co2::coroutine_traits<R>;                                  \
+    using _co2_P = ::co2::detail::promise_t<_co2_T>;                            \
+    using _co2_C = ::co2::coroutine<_co2_P>;                                    \
     struct _co2_pack                                                            \
     {                                                                           \
-        _impl_CO2_TUPLE_FOR_EACH(_impl_CO2_DECL_MEMBER, capture)                \
+        _impl_CO2_TUPLE_FOR_EACH(_impl_CO2_DECL_PARAM, capture)                 \
     };                                                                          \
-    _co2_pack pack = {_impl_CO2_TUPLE_FOR_EACH(_impl_CO2_FWD_MEMBER, capture)}; \
+    _co2_pack pack = {_impl_CO2_TUPLE_FOR_EACH(_impl_CO2_FWD_PARAM, capture)};  \
     struct _co2_op : _co2_pack                                                  \
     {                                                                           \
-        _impl_CO2_TUPLE_FOR_EACH(_impl_CO2_USE_MEMBER, capture)                 \
+        _impl_CO2_TUPLE_FOR_EACH(_impl_CO2_USE_PARAM, capture)                  \
         __VA_ARGS__                                                             \
         _co2_op(_co2_pack&& pack) : _co2_pack(std::move(pack)) {}               \
         using _co2_start = std::integral_constant<unsigned, __COUNTER__>;       \
-        co2::detail::avoid_plain_return operator()                              \
+        ::co2::detail::avoid_plain_return operator()                            \
         (_co2_C const& _co2_coro, unsigned& _co2_next, unsigned& _co2_eh, void* _co2_tmp)\
         {                                                                       \
             auto& _co2_promise = _co2_coro.promise();                           \
@@ -539,28 +598,28 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)
                 switch (_co2_next)                                              \
                 {                                                               \
                 case _co2_start::value:                                         \
-                    using _co2_curr_eh = co2::detail::sentinel;                 \
+                    using _co2_curr_eh = ::co2::detail::sentinel;               \
                     _co2_eh = _co2_curr_eh::value;                              \
                     CO2_AWAIT(_co2_promise.initial_suspend());                  \
 /***/
 
 #define CO2_END                                                                 \
-                    _co2_next = co2::detail::sentinel::value;                   \
-                    co2::detail::final_result(&_co2_promise);                   \
+                    _co2_next = ::co2::detail::sentinel::value;                 \
+                    ::co2::detail::final_result(&_co2_promise);                 \
                 }                                                               \
             }                                                                   \
             catch (...)                                                         \
             {                                                                   \
                 _co2_next = _co2_eh;                                            \
                 _co2_ex = std::current_exception();                             \
-                if (_co2_next != co2::detail::sentinel::value)                  \
+                if (_co2_next != ::co2::detail::sentinel::value)                \
                     goto _co2_try_again;                                        \
                 _co2_promise.set_exception(std::move(_co2_ex));                 \
             }                                                                   \
-            return co2::detail::avoid_plain_return{};                           \
+            return ::co2::detail::avoid_plain_return{};                         \
         }                                                                       \
     };                                                                          \
-    _co2_C coro(new co2::detail::frame<_co2_P, _co2_op>(std::move(pack)));      \
+    _co2_C coro(new ::co2::detail::frame<_co2_P, _co2_op>(std::move(pack)));    \
     coro();                                                                     \
     return coro.promise().get_return_object();                                  \
 }                                                                               \

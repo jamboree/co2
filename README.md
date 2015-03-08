@@ -108,7 +108,7 @@ It's safe if `await` is an expression as in N4286, but in _CO2_, `CO2_AWAIT(some
 ## Difference from N4286
 
 * Unlike `coroutine_handle` in N4286, `coroutine` is ref-counted.
-* No `coroutine_traits`, _CO2_ always use `return_type::promise_type` for the promise and `new` for allocation.
+* `coroutine_traits` depends on return_type only, always uses `new` for allocation.
 * `promise_type::final_suspend` is ignored.
 
 ## Reference
@@ -134,6 +134,7 @@ __Macros__
 * `CO2_CATCH`
 
 __Classes__
+* `co2::coroutine_traits<R>`
 * `co2::coroutine<Promise>`
 * `co2::generator<T>`
 * `co2::task<T>`
@@ -151,7 +152,7 @@ auto range(int i, int e) CO2_RET(co2::generator<int>, (i, e))
 {
     for (; i != e; ++i)
         CO2_YIELD(i);
-} CO2_END;
+} CO2_END
 ```
 
 __Use a generator__
