@@ -57,11 +57,12 @@ Inside the coroutine body, there are some restrictions:
 * try-catch block surrouding `await` statements should be replaced with `CO2_TRY` & `CO2_CATCH`
 * identifiers starting with `_co2_` are reserved for this library
 
-__return statement__
+### return statement
 * `return` -> `CO2_RETURN()`
 * `return expr` -> `CO2_RETURN(expr)`
+* `return void-expr` -> `CO2_RETURN_FROM(void-expr)` (useful in generic code)
 
-__try-catch__
+### try-catch
 ```c++
 CO2_TRY {...}
 CO2_CATCH (std::runtime_error& e) {...}
@@ -151,7 +152,7 @@ __Define a generator__
 ```c++
 auto range(int i, int e) CO2_RET(co2::generator<int>, (i, e))
 {
-    for (; i != e; ++i)
+    for ( ; i != e; ++i)
         CO2_YIELD(i);
 } CO2_END
 ```
