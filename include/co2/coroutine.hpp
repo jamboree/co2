@@ -121,6 +121,25 @@ namespace co2 { namespace detail
         };
     }
 
+    struct exception_storage
+    {
+        void set(std::exception_ptr&& e) noexcept
+        {
+            new(&_data) std::exception_ptr(std::move(e));
+        }
+
+        std::exception_ptr get() noexcept
+        {
+            auto& ex = *reinterpret_cast<std::exception_ptr*>(&_data);
+            std::exception_ptr ret(std::move(ex));
+            ex.~exception_ptr();
+            return ret;
+        }
+
+        std::aligned_storage_t<
+            sizeof(std::exception_ptr), alignof(std::exception_ptr)> _data;
+    };
+
     using sentinel = std::integral_constant<unsigned, ~1u>;
 
     struct resumable_base
@@ -492,12 +511,20 @@ namespace co2
     using _co2_expr_t = decltype(::co2::detail::unrvref(expr));                 \
     using _co2_await = ::co2::detail::temp::traits<_co2_expr_t>;                \
     _co2_await::create(_co2_tmp, expr);                                         \
-    if (!::co2::await_ready(_co2_await::get(_co2_tmp)))                         \
+    try                                                                         \
     {                                                                           \
-        _co2_next = next;                                                       \
-        if (::co2::await_suspend(_co2_await::get(_co2_tmp), _co2_coro),         \
-            ::co2::detail::void_{})                                             \
-            return ::co2::detail::avoid_plain_return{};                         \
+        if (!::co2::await_ready(_co2_await::get(_co2_tmp)))                     \
+        {                                                                       \
+            _co2_next = next;                                                   \
+            if (::co2::await_suspend(_co2_await::get(_co2_tmp), _co2_coro),     \
+                ::co2::detail::void_{})                                         \
+                return ::co2::detail::avoid_plain_return{};                     \
+        }                                                                       \
+    }                                                                           \
+    catch (...)                                                                 \
+    {                                                                           \
+        _co2_await::reset(_co2_tmp);                                            \
+        throw;                                                                  \
     }                                                                           \
     case next:                                                                  \
     if (_co2_promise.cancellation_requested())                                  \
@@ -551,7 +578,7 @@ else case _co2_curr_eh::value:                                                  
     try                                                                         \
     {                                                                           \
         _co2_eh = _co2_prev_eh::value;                                          \
-        std::rethrow_exception(std::move(_co2_ex));                             \
+        std::rethrow_exception(_co2_ex.get());                                  \
     }                                                                           \
     catch                                                                       \
 /***/
@@ -591,7 +618,7 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)
         (_co2_C const& _co2_coro, unsigned& _co2_next, unsigned& _co2_eh, void* _co2_tmp)\
         {                                                                       \
             auto& _co2_promise = _co2_coro.promise();                           \
-            std::exception_ptr _co2_ex;                                         \
+            ::co2::detail::exception_storage _co2_ex;                           \
             _co2_try_again:                                                     \
             try                                                                 \
             {                                                                   \
@@ -611,10 +638,10 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)
             catch (...)                                                         \
             {                                                                   \
                 _co2_next = _co2_eh;                                            \
-                _co2_ex = std::current_exception();                             \
+                _co2_ex.set(std::current_exception());                          \
                 if (_co2_next != ::co2::detail::sentinel::value)                \
                     goto _co2_try_again;                                        \
-                _co2_promise.set_exception(std::move(_co2_ex));                 \
+                _co2_promise.set_exception(_co2_ex.get());                      \
             }                                                                   \
             return ::co2::detail::avoid_plain_return{};                         \
         }                                                                       \
