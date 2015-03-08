@@ -37,9 +37,6 @@ namespace co2 { namespace task_detail
 namespace co2
 {
     template<class T>
-    struct shared_task;
-
-    template<class T = void>
     struct task
       : task_detail::impl<task<T>, T, T, task_detail::unique_promise_base>
     {
@@ -54,10 +51,7 @@ namespace co2
 
         shared_task<T> share()
         {
-            return [](task self) CO2_RET(shared_task<T>, (self))
-            {
-                CO2_AWAIT_RETURN(self);
-            } CO2_END (std::move(*this));
+            return task_detail::share(std::move(*this));
         }
     };
 

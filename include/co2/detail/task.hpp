@@ -11,6 +11,15 @@
 #include <co2/coroutine.hpp>
 #include <co2/detail/storage.hpp>
 
+namespace co2
+{
+    template<class T = void>
+    struct task;
+
+    template<class T = void>
+    struct shared_task;
+}
+
 namespace co2 { namespace task_detail
 {
     using detail::tag;
@@ -162,6 +171,12 @@ namespace co2 { namespace task_detail
 
         coroutine<promise_type> _coro;
     };
+
+    template<class T>
+    auto share(task<T> t) CO2_RET(shared_task<T>, (t))
+    {
+        CO2_AWAIT_RETURN(t);
+    } CO2_END
 }}
 
 #endif

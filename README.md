@@ -118,6 +118,7 @@ __Headers__
 * `#include <co2/generator.hpp>`
 * `#include <co2/task.hpp>`
 * `#include <co2/shared_task.hpp>`
+* `#include <co2/adapted/boost_future.hpp>`
 
 __Macros__
 * `CO2_BEGIN`

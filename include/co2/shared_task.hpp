@@ -61,7 +61,7 @@ namespace co2 { namespace task_detail
 
 namespace co2
 {
-    template<class T = void>
+    template<class T>
     struct shared_task
       : task_detail::impl<shared_task<T>, T, task_detail::cref_t<T>,
             task_detail::shared_promise_base>
@@ -71,6 +71,10 @@ namespace co2
                 task_detail::shared_promise_base>;
 
         using base_type::base_type;
+
+        shared_task(task<T>&& other)
+          : base_type(task_detail::share(std::move(other)))
+        {}
     };
 
     template<class T>
