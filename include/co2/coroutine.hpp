@@ -174,22 +174,25 @@ namespace co2 { namespace detail
     template<class Promise, class F>
     struct frame final : resumable<Promise>
     {
-        F f;
+        std::aligned_storage_t<sizeof(F), alignof(F)> _data;
 
         template<class Pack>
-        frame(Pack&& pack) : f(std::forward<Pack>(pack))
+        frame(Pack&& pack)
         {
+            new(&_data) F(std::forward<Pack>(pack));
             this->_next = F::_co2_start::value;
         }
 
         void run(coroutine<> const& coro) noexcept override
         {
-            f(static_cast<coroutine<Promise> const&>(coro), this->_next, this->_eh, &this->_tmp);
+            (reinterpret_cast<F&>(_data))
+            (static_cast<coroutine<Promise> const&>(coro), this->_next, this->_eh, &this->_tmp);
         }
 
         void release(coroutine<> const& coro) noexcept override
         {
-            f(static_cast<coroutine<Promise> const&>(coro), ++this->_next, this->_eh, &this->_tmp);
+            (reinterpret_cast<F&>(_data))
+            (static_cast<coroutine<Promise> const&>(coro), ++this->_next, this->_eh, &this->_tmp);
             delete this;
         }
     };
@@ -529,9 +532,10 @@ namespace co2
     case next:                                                                  \
     if (_co2_promise.cancellation_requested())                                  \
     {                                                                           \
+        _co2_next = ::co2::detail::sentinel::value;                             \
         case __COUNTER__:                                                       \
         _co2_await::reset(_co2_tmp);                                            \
-        return ::co2::detail::avoid_plain_return{};                             \
+        goto _co2_finalize;                                                     \
     }                                                                           \
     ::co2::detail::temp::auto_reset<_co2_expr_t> _co2_reset = {_co2_tmp};       \
     ret (::co2::await_resume(_co2_await::get(_co2_tmp)));                       \
@@ -550,7 +554,7 @@ _impl_CO2_AWAIT(([this](let) __VA_ARGS__), expr, __COUNTER__)
 {                                                                               \
     _co2_next = ::co2::detail::sentinel::value;                                 \
     _co2_promise.set_result(__VA_ARGS__);                                       \
-    return ::co2::detail::avoid_plain_return{};                                 \
+    goto _co2_finalize;                                                         \
 }                                                                               \
 /***/
 
@@ -558,7 +562,7 @@ _impl_CO2_AWAIT(([this](let) __VA_ARGS__), expr, __COUNTER__)
 {                                                                               \
     _co2_next = ::co2::detail::sentinel::value;                                 \
     ::co2::detail::set_result(_co2_promise, (__VA_ARGS__, ::co2::detail::void_{}));\
-    return ::co2::detail::avoid_plain_return{};                                 \
+    goto _co2_finalize;                                                         \
 }                                                                               \
 /***/
 
@@ -633,6 +637,8 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)
 #define CO2_END                                                                 \
                     _co2_next = ::co2::detail::sentinel::value;                 \
                     ::co2::detail::final_result(&_co2_promise);                 \
+                _co2_finalize:                                                  \
+                    this->~_co2_op();                                           \
                 }                                                               \
             }                                                                   \
             catch (...)                                                         \
@@ -642,6 +648,7 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)
                 if (_co2_next != ::co2::detail::sentinel::value)                \
                     goto _co2_try_again;                                        \
                 _co2_promise.set_exception(_co2_ex.get());                      \
+                this->~_co2_op();                                               \
             }                                                                   \
             return ::co2::detail::avoid_plain_return{};                         \
         }                                                                       \

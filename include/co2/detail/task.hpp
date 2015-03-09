@@ -167,7 +167,7 @@ namespace co2 { namespace task_detail
             return _coro.promise().get();
         }
 
-    private:
+    protected:
 
         coroutine<promise_type> _coro;
     };

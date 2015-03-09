@@ -51,9 +51,21 @@ You may find that repeating the return_type twice is annoying, as C++11 adds tra
 []() CO2_RET(return_type, ()) {...} CO2_END
 ```
 
+You can intialize the local variables in the local variables section, for example:
+```c++
+auto f(int i) CO2_RET(return_type, (i),
+    int i2 = i * 2;
+)
+{
+    // coroutine-body
+} CO2_END
+```
+
+Note that in this emulation, local variables intialization happens before `initial_suspend`, and if any exception is throw during the intialization, `set_exception` won't be called, instead, the exception will propagate to the caller directly.
+
 Inside the coroutine body, there are some restrictions:
-* auto local variables are not allowed - you should specify them in local variables section of `CO2_BEGIN`
-* `return` should be replaced with `CO2_RETURN`
+* local variables with automatic storage are not allowed - you should specify them in local variables section of `CO2_BEGIN` as described above
+* `return` should be replaced with `CO2_RETURN`/`CO2_RETURN_FROM`
 * try-catch block surrouding `await` statements should be replaced with `CO2_TRY` & `CO2_CATCH`
 * identifiers starting with `_co2_` are reserved for this library
 
