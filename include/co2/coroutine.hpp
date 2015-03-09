@@ -312,7 +312,8 @@ namespace co2
 
         coroutine(coroutine const& other) : _ptr(other._ptr)
         {
-            _ptr->_use_count.fetch_add(1, std::memory_order_relaxed);
+            if (_ptr)
+                _ptr->_use_count.fetch_add(1, std::memory_order_relaxed);
         }
         
         coroutine(coroutine&& other) noexcept : _ptr(other._ptr)
@@ -362,7 +363,7 @@ namespace co2
             return _ptr;
         }
 
-        handle_type release_handle() noexcept
+        handle_type detach() noexcept
         {
             auto handle = _ptr;
             _ptr = nullptr;
@@ -456,7 +457,7 @@ namespace co2
 
         coroutine<> exchange(coroutine<> coro)
         {
-            return coroutine<>(_p.exchange(coro.release_handle(), std::memory_order_relaxed));
+            return coroutine<>(_p.exchange(coro.detach(), std::memory_order_relaxed));
         }
 
         coroutine<> exchange_null()

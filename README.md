@@ -61,7 +61,7 @@ auto f(int i) CO2_RET(return_type, (i),
 } CO2_END
 ```
 
-Note that in this emulation, local variables intialization happens before `initial_suspend`, and if any exception is throw during the intialization, `set_exception` won't be called, instead, the exception will propagate to the caller directly.
+Note that in this emulation, local variables intialization happens before `initial_suspend`, and if any exception is thrown during the intialization, `set_exception` won't be called, instead, the exception will propagate to the caller directly.
 
 Inside the coroutine body, there are some restrictions:
 * local variables with automatic storage are not allowed - you should specify them in local variables section of `CO2_BEGIN` as described above
