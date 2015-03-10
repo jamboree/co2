@@ -45,6 +45,8 @@ namespace co2
 
         using base_type::base_type;
 
+        task() = default;
+
         task(task&&) = default;
 
         task& operator=(task&& other) = default;

@@ -72,6 +72,8 @@ namespace co2
 
         using base_type::base_type;
 
+        shared_task() = default;
+
         shared_task(task<T>&& other)
           : base_type(task_detail::share(std::move(other)))
         {}

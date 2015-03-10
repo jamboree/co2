@@ -130,7 +130,7 @@ namespace co2 { namespace task_detail
 
         impl() = default;
 
-        explicit impl(promise_type& p) : _coro(&p) {}
+        explicit impl(promise_type& p) noexcept : _coro(&p) {}
 
         explicit operator bool() const noexcept
         {
@@ -142,7 +142,7 @@ namespace co2 { namespace task_detail
             return static_cast<bool>(_coro);
         }
 
-        void swap(impl& other) noexcept
+        void swap(Derived& other) noexcept
         {
             _coro.swap(other._coro);
         }
