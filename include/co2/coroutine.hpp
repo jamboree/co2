@@ -359,6 +359,18 @@ namespace co2
             return !!_ptr;
         }
 
+        unsigned use_count() const noexcept
+        {
+            return _ptr ? _ptr->_use_count.load(std::memory_order_relaxed) : 0;
+        }
+
+        bool unique() const noexcept
+        {
+            if (_ptr)
+                return _ptr->_use_count.load(std::memory_order_relaxed) == 1;
+            return false;
+        }
+
         bool done() const noexcept
         {
             return _ptr->done();
