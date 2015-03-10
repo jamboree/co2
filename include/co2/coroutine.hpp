@@ -49,30 +49,19 @@ namespace co2 { namespace detail
 {
     namespace temp
     {
-        static constexpr std::size_t bytes = sizeof(void*) * 4;
-        using storage = std::aligned_storage_t<bytes, alignof(std::max_align_t)>;
+        template<std::size_t Bytes, std::size_t RefSize = sizeof(void*)>
+        using adjust_size = std::integral_constant<std::size_t, (Bytes > RefSize ? Bytes : RefSize)>;
 
-        template<class T, bool fit>
-        struct traits_non_ref
+        struct default_size
         {
-            static void create(void* p, T&& t)
-            {
-                new(p) T(std::move(t));
-            }
-
-            static T& get(void* p)
-            {
-                return *static_cast<T*>(p);
-            }
-
-            static void reset(void* p)
-            {
-                static_cast<T*>(p)->~T();
-            }
+            using _co2_sz = std::integral_constant<std::size_t, sizeof(void*) * 4>;
         };
 
-        template<class T>
-        struct traits_non_ref<T, false>
+        template<std::size_t Bytes>
+        using storage = std::aligned_storage_t<Bytes, alignof(std::max_align_t)>;
+
+        template<class T, bool NeedsAlloc>
+        struct traits_non_ref
         {
             static void create(void* p, T&& t)
             {
@@ -91,10 +80,26 @@ namespace co2 { namespace detail
         };
 
         template<class T>
-        struct traits : traits_non_ref<T, !(sizeof(T) > bytes)> {};
+        struct traits_non_ref<T, false>
+        {
+            static void create(void* p, T&& t)
+            {
+                new(p) T(std::move(t));
+            }
+
+            static T& get(void* p)
+            {
+                return *static_cast<T*>(p);
+            }
+
+            static void reset(void* p)
+            {
+                static_cast<T*>(p)->~T();
+            }
+        };
 
         template<class T>
-        struct traits<T&>
+        struct traits_ref
         {
             static void create(void* p, T& t)
             {
@@ -109,14 +114,20 @@ namespace co2 { namespace detail
             static void reset(void* p) {}
         };
 
-        template<class T>
+        template<class T, std::size_t Bytes>
+        struct traits : traits_non_ref<T, (sizeof(T) > Bytes)> {};
+
+        template<class T, std::size_t Bytes>
+        struct traits<T&, Bytes> : traits_ref<T> {};
+
+        template<class T, std::size_t Bytes>
         struct auto_reset
         {
             void* tmp;
 
             ~auto_reset()
             {
-                traits<T>::reset(tmp);
+                traits<T, Bytes>::reset(tmp);
             }
         };
     }
@@ -144,7 +155,6 @@ namespace co2 { namespace detail
 
     struct resumable_base
     {
-        temp::storage _tmp;
         std::atomic<unsigned> _use_count {1};
         unsigned _next;
         unsigned _eh;
@@ -170,29 +180,30 @@ namespace co2 { namespace detail
             return static_cast<resumable*>(p);
         }
     };
-    
+
     template<class Promise, class F>
     struct frame final : resumable<Promise>
     {
-        std::aligned_storage_t<sizeof(F), alignof(F)> _data;
+        temp::storage<F::_co2_sz::value> _tmp;
+        std::aligned_storage_t<sizeof(F), alignof(F)> _f;
 
         template<class Pack>
         frame(Pack&& pack)
         {
-            new(&_data) F(std::forward<Pack>(pack));
+            new(&_f) F(std::forward<Pack>(pack));
             this->_next = F::_co2_start::value;
         }
 
         void run(coroutine<> const& coro) noexcept override
         {
-            (reinterpret_cast<F&>(_data))
-            (static_cast<coroutine<Promise> const&>(coro), this->_next, this->_eh, &this->_tmp);
+            (reinterpret_cast<F&>(_f))
+            (static_cast<coroutine<Promise> const&>(coro), this->_next, this->_eh, &_tmp);
         }
 
         void release(coroutine<> const& coro) noexcept override
         {
-            (reinterpret_cast<F&>(_data))
-            (static_cast<coroutine<Promise> const&>(coro), ++this->_next, this->_eh, &this->_tmp);
+            (reinterpret_cast<F&>(_f))
+            (static_cast<coroutine<Promise> const&>(coro), ++this->_next, this->_eh, &_tmp);
             delete this;
         }
     };
@@ -513,7 +524,7 @@ namespace co2
 #define _impl_CO2_AWAIT(ret, expr, next)                                        \
 {                                                                               \
     using _co2_expr_t = decltype(::co2::detail::unrvref(expr));                 \
-    using _co2_await = ::co2::detail::temp::traits<_co2_expr_t>;                \
+    using _co2_await = ::co2::detail::temp::traits<_co2_expr_t, _co2_sz::value>;\
     _co2_await::create(_co2_tmp, expr);                                         \
     try                                                                         \
     {                                                                           \
@@ -538,7 +549,8 @@ namespace co2
         _co2_await::reset(_co2_tmp);                                            \
         goto _co2_finalize;                                                     \
     }                                                                           \
-    ::co2::detail::temp::auto_reset<_co2_expr_t> _co2_reset = {_co2_tmp};       \
+    ::co2::detail::temp::auto_reset<_co2_expr_t, _co2_sz::value>                \
+        _co2_reset = {_co2_tmp};                                                \
     ret (::co2::await_resume(_co2_await::get(_co2_tmp)));                       \
 }                                                                               \
 /***/
@@ -603,6 +615,8 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)
         _impl_CO2_TUPLE_FOR_EACH_IMPL)(macro, t)                                \
 /***/
 
+#define CO2_RESERVE(bytes) using _co2_sz = ::co2::detail::temp::adjust_size<bytes>
+
 #define CO2_BEGIN(R, capture, ...)                                              \
 {                                                                               \
     using _co2_T = ::co2::coroutine_traits<R>;                                  \
@@ -613,7 +627,7 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)
         _impl_CO2_TUPLE_FOR_EACH(_impl_CO2_DECL_PARAM, capture)                 \
     };                                                                          \
     _co2_pack pack = {_impl_CO2_TUPLE_FOR_EACH(_impl_CO2_FWD_PARAM, capture)};  \
-    struct _co2_op : _co2_pack                                                  \
+    struct _co2_op : ::co2::detail::temp::default_size, _co2_pack               \
     {                                                                           \
         _impl_CO2_TUPLE_FOR_EACH(_impl_CO2_USE_PARAM, capture)                  \
         __VA_ARGS__                                                             \

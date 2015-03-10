@@ -116,7 +116,18 @@ The fact that `await` in _CO2_ is not an expression has an implication on object
 
 `await something{temporaries}` and `something` holds references to temporaries.
 
-It's safe if `await` is an expression as in N4286, but in _CO2_, `CO2_AWAIT(something{temporaries})` is an emulated statement, the temporaries will go out of scope.
+It's safe if `await` is an expression as in N4286, but in _CO2_, `CO2_AWAIT(something{temporaries})` is an emulated statement, the `temporaries` will go out of scope.
+
+Besides, the awaiter itself has to be stored somewhere, _CO2_ internally reserves `sizeof(pointer) * 4` bytes for that as default, if the size of awaiter is larger than that, free store will be used.
+If the default size is too large or too small for you, you can specify the desired size with `CO2_RESERVE` anywhere in the local variables section:
+```c++
+auto f() CO2_RET(return_type, (),
+    CO2_RESERVE(bytes);
+)
+{
+    ...
+} CO2_END
+```
 
 ## Difference from N4286
 
@@ -146,6 +157,7 @@ __Macros__
 * `CO2_RETURN_FROM`
 * `CO2_TRY`
 * `CO2_CATCH`
+* `CO2_RESERVE`
 
 __Classes__
 * `co2::coroutine_traits<R>`
