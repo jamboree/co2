@@ -135,6 +135,15 @@ auto f() CO2_RET(return_type, (),
 * `coroutine_traits` depends on return_type only, always uses `new` for allocation.
 * `promise_type::final_suspend` is ignored.
 
+### Additional customization points
+
+In addition to the promise requirements defined by N4286, _CO2_ defines an optional pair of customization points:
+1. `bool before_resume()`
+2. `void after_suspend()`
+
+`before_resume` is called for checking if the coroutine can be resumed, and `after_suspend` is called after `await_suspend` succeed on the awaiter.
+Combined with `cancellation_requested`, they allow you to actively cancel the coroutine instead of passively waiting for the awaiter to resume-and-cancel.
+
 ## Reference
 
 __Headers__

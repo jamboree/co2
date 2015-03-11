@@ -155,7 +155,7 @@ namespace co2 { namespace detail
 
     struct resumable_base
     {
-        std::atomic<unsigned> _use_count {1};
+        std::atomic<unsigned> _use_count {1u};
         unsigned _next;
         unsigned _eh;
         virtual void run(coroutine<> const&) noexcept = 0;
@@ -184,7 +184,7 @@ namespace co2 { namespace detail
     template<class Promise>
     inline auto before_resume(Promise* p) -> decltype(p->before_resume())
     {
-        using also_reuqires = decltype(p->after_suspend());
+        decltype(p->after_suspend()) is_also_required();
         return p->before_resume();
     }
 
@@ -196,7 +196,7 @@ namespace co2 { namespace detail
     template<class Promise>
     inline auto after_suspend(Promise* p) -> decltype(p->after_suspend())
     {
-        using also_reuqires = decltype(p->before_resume());
+        decltype(p->before_resume()) is_also_required();
         p->after_suspend();
     }
 
@@ -217,7 +217,7 @@ namespace co2 { namespace detail
 
         void run(coroutine<> const& coro) noexcept override
         {
-            if (detail::before_resume(&promise()))
+            if (detail::before_resume(&this->promise()))
             {
                 (reinterpret_cast<F&>(_f))
                 (static_cast<coroutine<Promise> const&>(coro), this->_next, this->_eh, &_tmp);
@@ -348,7 +348,7 @@ namespace co2
         coroutine(coroutine const& other) : _ptr(other._ptr)
         {
             if (_ptr)
-                _ptr->_use_count.fetch_add(1, std::memory_order_relaxed);
+                _ptr->_use_count.fetch_add(1u, std::memory_order_relaxed);
         }
         
         coroutine(coroutine&& other) noexcept : _ptr(other._ptr)
@@ -391,7 +391,7 @@ namespace co2
         bool unique() const noexcept
         {
             if (_ptr)
-                return _ptr->_use_count.load(std::memory_order_relaxed) == 1;
+                return _ptr->_use_count.load(std::memory_order_relaxed) == 1u;
             return false;
         }
 
@@ -421,7 +421,7 @@ namespace co2
 
         void release_frame() noexcept
         {
-            if (_ptr && _ptr->_use_count.fetch_sub(1, std::memory_order_relaxed) == 1)
+            if (_ptr && _ptr->_use_count.fetch_sub(1u, std::memory_order_relaxed) == 1u)
                 _ptr->release(*this);
         }
 
@@ -444,7 +444,7 @@ namespace co2
             if (p)
             {
                 _ptr = detail::resumable<Promise>::from_promise(p);
-                _ptr->_use_count.fetch_add(1, std::memory_order_relaxed);
+                _ptr->_use_count.fetch_add(1u, std::memory_order_relaxed);
             }
         }
 

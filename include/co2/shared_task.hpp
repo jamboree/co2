@@ -32,7 +32,7 @@ namespace co2 { namespace task_detail
 
         void notify()
         {
-            while (_lock.exchange(2, std::memory_order_acquire));
+            while (_lock.exchange(2u, std::memory_order_acquire));
             unlocker _{_lock};
             for (auto& f : _followers)
                 f();
@@ -45,8 +45,8 @@ namespace co2 { namespace task_detail
             unsigned flag;
             do
             {
-                flag = _lock.fetch_or(1, std::memory_order_acquire);
-                if (flag & 2)
+                flag = _lock.fetch_or(1u, std::memory_order_acquire);
+                if (flag & 2u)
                     return false;
             } while (flag);
             unlocker _{_lock};
