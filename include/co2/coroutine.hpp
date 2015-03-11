@@ -181,6 +181,27 @@ namespace co2 { namespace detail
         }
     };
 
+    template<class Promise>
+    inline auto before_resume(Promise* p) -> decltype(p->before_resume())
+    {
+        using also_reuqires = decltype(p->after_suspend());
+        return p->before_resume();
+    }
+
+    inline bool before_resume(void*)
+    {
+        return true;
+    }
+
+    template<class Promise>
+    inline auto after_suspend(Promise* p) -> decltype(p->after_suspend())
+    {
+        using also_reuqires = decltype(p->before_resume());
+        p->after_suspend();
+    }
+
+    inline void after_suspend(void*) {}
+
     template<class Promise, class F>
     struct frame final : resumable<Promise>
     {
@@ -196,8 +217,11 @@ namespace co2 { namespace detail
 
         void run(coroutine<> const& coro) noexcept override
         {
-            (reinterpret_cast<F&>(_f))
-            (static_cast<coroutine<Promise> const&>(coro), this->_next, this->_eh, &_tmp);
+            if (detail::before_resume(&promise()))
+            {
+                (reinterpret_cast<F&>(_f))
+                (static_cast<coroutine<Promise> const&>(coro), this->_next, this->_eh, &_tmp);
+            }
         }
 
         void release(coroutine<> const& coro) noexcept override
@@ -545,7 +569,10 @@ namespace co2
             _co2_next = next;                                                   \
             if (::co2::await_suspend(_co2_await::get(_co2_tmp), _co2_coro),     \
                 ::co2::detail::void_{})                                         \
+            {                                                                   \
+                ::co2::detail::after_suspend(&_co2_promise);                    \
                 return ::co2::detail::avoid_plain_return{};                     \
+            }                                                                   \
         }                                                                       \
     }                                                                           \
     catch (...)                                                                 \
