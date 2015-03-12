@@ -129,22 +129,11 @@ namespace co2
             coroutine<promise_type> _coro;
         };
 
-        // Init with frame won't add the ref-count, so after distruction, the
-        // ref-count will be inconsistent, but it's fine since the `release`
-        // is nop in empty_frame.
-        generator() noexcept : _coro(get_empty_frame()) {}
+        generator() = default;
 
-        generator(generator&& other) noexcept
-          : _coro(other._coro)
-        {
-            other._coro = coroutine<promise_type>(get_empty_frame());
-        }
+        generator(generator&& other) = default;
 
-        generator& operator=(generator&& other) noexcept
-        {
-            this->~generator();
-            return *new(this) generator(std::move(other));
-        }
+        generator& operator=(generator&& other) = default;
 
         void swap(generator& other) noexcept
         {
@@ -153,7 +142,7 @@ namespace co2
 
         iterator begin()
         {
-            if (_coro.done())
+            if (!_coro || _coro.done())
                 return {};
             return iterator(_coro);
         }
@@ -164,14 +153,6 @@ namespace co2
         }
 
     private:
-
-        using empty_frame  = detail::empty_frame<promise_type>;
-
-        static empty_frame* get_empty_frame()
-        {
-            static empty_frame ret;
-            return &ret;
-        }
 
         explicit generator(promise_type* p) : _coro(p) {}
 

@@ -93,11 +93,6 @@ namespace co2
                 }
             }
 
-            coroutine<promise_type>* head()
-            {
-                return _head;
-            }
-
         private:
 
             void reset_value()
@@ -122,7 +117,7 @@ namespace co2
                 {
                     bool await_ready() noexcept
                     {
-                        return _child._coro->done();
+                        return !_child._coro || _child._coro->done();
                     }
                 
                     void await_suspend(coroutine<promise_type> const& coro) noexcept
@@ -135,7 +130,8 @@ namespace co2
                 
                     void await_resume()
                     {
-                        _child._coro->promise().rethrow_exception();
+                        if (_child._coro)
+                            _child._coro->promise().rethrow_exception();
                     }
                 
                     Generator _child;
@@ -185,12 +181,12 @@ namespace co2
             coroutine<promise_type> const* _coro;
         };
 
-        recursive_generator() noexcept : _coro(get_empty_coro()) {}
+        recursive_generator() noexcept : _coro() {}
 
         recursive_generator(recursive_generator&& other) noexcept
           : _coro(other._coro)
         {
-            other._coro = get_empty_coro();
+            other._coro = nullptr;
         }
 
         recursive_generator& operator=(recursive_generator&& other) noexcept
@@ -201,7 +197,7 @@ namespace co2
 
         ~recursive_generator()
         {
-            if (_coro != get_empty_coro())
+            if (_coro)
                 _coro->reset();
         }
 
@@ -212,7 +208,7 @@ namespace co2
 
         iterator begin()
         {
-            if (_coro->done())
+            if (!_coro || _coro->done())
                 return {};
             return iterator(_coro);
         }
@@ -223,14 +219,6 @@ namespace co2
         }
 
     private:
-
-        using empty_frame = detail::empty_frame<promise_type>;
-
-        static coroutine<promise_type>* get_empty_coro()
-        {
-            static empty_frame ret;
-            return ret.promise().head();
-        }
 
         explicit recursive_generator(coroutine<promise_type>* coro) noexcept
           : _coro(coro)
