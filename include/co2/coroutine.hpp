@@ -534,8 +534,8 @@ namespace co2
     // The IS_EMPTY trick is from:
     // http://gustedt.wordpress.com/2010/06/08/detect-empty-macro-arguments/
     // IS_EMPTY {
-#   define _impl_CO2__ARG16(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, ...) _15
-#   define _impl_CO2_HAS_COMMA(...) _impl_CO2__ARG16(__VA_ARGS__, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0)
+#   define _impl_CO2_ARG16(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, ...) _15
+#   define _impl_CO2_HAS_COMMA(...) _impl_CO2_ARG16(__VA_ARGS__, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0)
 #   define _impl_CO2_TRIGGER_PARENTHESIS_(...) ,
 
 #   define _impl_CO2_IS_EMPTY(...)                                              \
@@ -552,7 +552,7 @@ namespace co2
     /***/
 
 #   define _impl_CO2_PASTE5(_0, _1, _2, _3, _4) _0 ## _1 ## _2 ## _3 ## _4
-#   define _impl_CO2_IS_EMPTY_IMPL(_0, _1, _2, _3) _impl_CO2_HAS_COMMA(_impl_CO2_PASTE5(_IS_EMPTY_CASE_, _0, _1, _2, _3))
+#   define _impl_CO2_IS_EMPTY_IMPL(_0, _1, _2, _3) _impl_CO2_HAS_COMMA(_impl_CO2_PASTE5(_impl_CO2_IS_EMPTY_CASE_, _0, _1, _2, _3))
 #   define _impl_CO2_IS_EMPTY_CASE_0001 ,
     // } IS_EMPTY
 #   endif
@@ -597,7 +597,7 @@ namespace co2
 #define CO2_AWAIT_SET(var, expr) _impl_CO2_AWAIT(var =, expr, __COUNTER__)
 #define CO2_AWAIT(expr) _impl_CO2_AWAIT(, expr, __COUNTER__)
 #define CO2_AWAIT_LET(let, expr, ...)                                           \
-_impl_CO2_AWAIT(([this](let) __VA_ARGS__), expr, __COUNTER__)
+_impl_CO2_AWAIT(([this](let) __VA_ARGS__), expr, __COUNTER__)                   \
 /***/
 
 #define CO2_YIELD(...) CO2_AWAIT(_co2_promise.yield_value(__VA_ARGS__))
@@ -645,8 +645,9 @@ else case _co2_curr_eh::value:                                                  
 #define _impl_CO2_USE_PARAM(r, _, e) using _co2_pack::e;
 
 #define _impl_CO2_TUPLE_FOR_EACH_IMPL(macro, t)                                 \
-BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)
+BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)                     \
 /***/
+
 #define _impl_CO2_TUPLE_FOR_EACH_EMPTY(macro, t)
 
 #define _impl_CO2_TUPLE_FOR_EACH(macro, t)                                      \
