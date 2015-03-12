@@ -7,6 +7,7 @@
 #ifndef CO2_COROUTINE_HPP_INCLUDED
 #define CO2_COROUTINE_HPP_INCLUDED
 
+#include <new>
 #include <atomic>
 #include <utility>
 #include <exception>

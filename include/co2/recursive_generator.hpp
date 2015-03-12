@@ -187,7 +187,8 @@ namespace co2
 
         recursive_generator() noexcept : _coro(get_empty_coro()) {}
 
-        recursive_generator(recursive_generator&& other) noexcept : _coro(other._coro)
+        recursive_generator(recursive_generator&& other) noexcept
+          : _coro(other._coro)
         {
             other._coro = get_empty_coro();
         }
