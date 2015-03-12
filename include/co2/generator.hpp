@@ -22,7 +22,7 @@ namespace co2
 
             generator get_return_object()
             {
-                return generator(*this);
+                return generator(this);
             }
 
             suspend_always initial_suspend()
@@ -40,7 +40,10 @@ namespace co2
                 return false;
             }
 
-            void set_result() {}
+            void set_result()
+            {
+                reset_value();
+            }
 
             void set_exception(std::exception_ptr const& e)
             {
@@ -71,20 +74,10 @@ namespace co2
             void rethrow_exception()
             {
                 if (_tag == detail::tag::exception)
-                    std::rethrow_exception(_data.exception);
-            }
-
-            ~promise_type()
-            {
-                switch (_tag)
                 {
-                case detail::tag::value:
-                    _data.value.~val_t();
-                    break;
-                case detail::tag::exception:
+                    auto ex(std::move(_data.exception));
                     _data.exception.~exception_ptr();
-                default:
-                    break;
+                    std::rethrow_exception(std::move(ex));
                 }
             }
 
@@ -138,8 +131,6 @@ namespace co2
 
         generator() : _coro(get_empty_frame()) {}
 
-        explicit generator(promise_type& p) : _coro(&p) {}
-
         generator(generator&& other) = default;
 
         generator& operator=(generator&& other) = default;
@@ -163,23 +154,15 @@ namespace co2
 
     private:
 
-        struct empty_frame final : detail::resumable<promise_type>
-        {
-            empty_frame()
-            {
-                this->_next = detail::sentinel::value;
-            }
-
-            void run(coroutine<> const& coro) noexcept override {}
-
-            void release(coroutine<> const& coro) noexcept override {}
-        };
+        using empty_frame  = detail::empty_frame<promise_type>;
 
         static empty_frame* get_empty_frame()
         {
             static empty_frame ret;
             return &ret;
         }
+
+        explicit generator(promise_type* p) : _coro(p) {}
 
         coroutine<promise_type> _coro;
     };

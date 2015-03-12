@@ -149,6 +149,7 @@ Combined with `cancellation_requested`, they allow you to actively cancel the co
 __Headers__
 * `#include <co2/coroutine.hpp>`
 * `#include <co2/generator.hpp>`
+* `#include <co2/recursive_generator.hpp>`
 * `#include <co2/task.hpp>`
 * `#include <co2/shared_task.hpp>`
 * `#include <co2/adapted/boost_future.hpp>`
@@ -172,6 +173,7 @@ __Classes__
 * `co2::coroutine_traits<R>`
 * `co2::coroutine<Promise>`
 * `co2::generator<T>`
+* `co2::recursive_generator<T>`
 * `co2::task<T>`
 * `co2::shared_task<T>`
 * `co2::suspend_always`
@@ -193,6 +195,34 @@ auto range(int i, int e) CO2_RET(co2::generator<int>, (i, e))
 __Use a generator__
 ```c++
 for (auto i : range(1, 10))
+{
+    std::cout << i << ", ";
+}
+```
+
+### Recursive Generator
+
+Same example as above, using `recursive_generator`:
+```c++
+auto recursive_range(int a, int b) CO2_RET(co2::recursive_generator<int>, (a, b),
+    int n = b - a;
+)
+{
+    if (n <= 0)
+        CO2_RETURN();
+
+    if (n == 1)
+    {
+        CO2_YIELD(a);
+        CO2_RETURN();
+    }
+
+    n = a + n / 2;
+    CO2_YIELD(recursive_range(a, n));
+    CO2_YIELD(recursive_range(n, b));
+} CO2_END
+
+for (auto i : recursive_range(1, 10))
 {
     std::cout << i << ", ";
 }

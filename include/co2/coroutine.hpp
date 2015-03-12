@@ -231,7 +231,20 @@ namespace co2 { namespace detail
             delete this;
         }
     };
-    
+
+    template<class Promise>
+    struct empty_frame final : resumable<Promise>
+    {
+        empty_frame()
+        {
+            this->_next = sentinel::value;
+        }
+
+        void run(coroutine<> const& coro) noexcept override {}
+
+        void release(coroutine<> const& coro) noexcept override {}
+    };
+
     template<class T>
     using promise_t = typename T::promise_type;
 
