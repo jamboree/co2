@@ -226,7 +226,6 @@ CO2_RET(co2::recursive_generator<int>, (use_alloc, alloc, a, b),
     CO2_YIELD(recursive_range(use_alloc, alloc, a, n));
     CO2_YIELD(recursive_range(use_alloc, alloc, n, b));
 } CO2_END
-}
 ```
 We use `stack_allocator` here:
 ```c++
