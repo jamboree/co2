@@ -99,7 +99,7 @@ CO2_RET(co2::recursive_generator<std::string>, (use_alloc, alloc, n))
 int main()
 {
     std::allocator_arg_t use_alloc;
-    co2::stack_buffer<1024> buf;
+    co2::stack_buffer<2 * 1024> buf;
     co2::stack_allocator<> alloc(buf);
     {
         node::ptr_t left_d(create_left_tree_from("d"));
