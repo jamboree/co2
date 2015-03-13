@@ -22,8 +22,8 @@ namespace co2
 
         void* allocate(std::size_t n)
         {
-            if (std::size_t(_end - _ptr) > n)
-                return static_cast<char*>(::operator new(n));
+            if (std::size_t(_end - _ptr) < n)
+                return ::operator new(n);
             auto p = _ptr;
             _ptr += n;
             return p;
