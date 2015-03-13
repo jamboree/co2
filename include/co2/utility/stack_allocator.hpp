@@ -42,6 +42,16 @@ namespace co2
                 ::operator delete(p);
         }
 
+        std::size_t used() const noexcept
+        {
+            return _ptr - _beg;
+        }
+
+        void clear() noexcept
+        {
+            _ptr = _beg;
+        }
+
     private:
 
         bool contains(char* p) noexcept

@@ -126,7 +126,7 @@ int main()
                   std::ostream_iterator<std::string>(std::cout, " "));
         std::cout << std::endl;
     }
-
+    buf.clear();
     {
         node::ptr_t left_d(create_left_tree_from("d"));
         auto left_d_reader(traverse(use_alloc, alloc, left_d));
@@ -141,7 +141,7 @@ int main()
                                 std::begin(right_b_reader))
                   << std::endl;
     }
-
+    buf.clear();
     {
         node::ptr_t left_d(create_left_tree_from("d"));
         auto left_d_reader(traverse(use_alloc, alloc, left_d));
@@ -156,7 +156,7 @@ int main()
                                 std::begin(right_x_reader))
                   << std::endl;
     }
-
+    buf.clear();
     std::cout << "Done" << std::endl;
 
     return EXIT_SUCCESS;
