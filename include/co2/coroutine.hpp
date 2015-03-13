@@ -262,7 +262,7 @@ namespace co2 { namespace detail
             traits::deallocate(a, this, 1);
         }
     };
-
+#   if 0
     template<class Promise>
     struct empty_frame final : resumable<Promise>
     {
@@ -275,7 +275,7 @@ namespace co2 { namespace detail
 
         void release(coroutine<> const& coro) noexcept override {}
     };
-
+#   endif
     template<class T>
     using promise_t = typename T::promise_type;
 
@@ -517,10 +517,7 @@ namespace co2
             return {};
         }
 
-        suspend_never final_suspend()
-        {
-            return {};
-        }
+        void finalize() noexcept {}
 
         bool cancellation_requested() const
         {
@@ -755,6 +752,7 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)                     
                     ::co2::detail::final_result(&_co2_promise);                 \
                 _co2_finalize:                                                  \
                     this->~_co2_op();                                           \
+                    _co2_promise.finalize();                                    \
                 }                                                               \
             }                                                                   \
             catch (...)                                                         \
@@ -765,6 +763,7 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)                     
                     goto _co2_try_again;                                        \
                 _co2_promise.set_exception(_co2_ex.get());                      \
                 this->~_co2_op();                                               \
+                _co2_promise.finalize();                                        \
             }                                                                   \
             return ::co2::detail::avoid_plain_return{};                         \
         }                                                                       \

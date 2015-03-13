@@ -30,9 +30,13 @@ namespace co2
                 return {};
             }
 
-            suspend_never final_suspend()
+            void finalize() noexcept
             {
-                return {};
+                if (_head != &_parent)
+                {
+                    _head->swap(_parent);
+                    (*_head)();
+                }
             }
 
             bool cancellation_requested() const
@@ -43,7 +47,6 @@ namespace co2
             void set_result()
             {
                 reset_value();
-                pop();
             }
 
             void set_exception(std::exception_ptr const& e)
@@ -51,7 +54,6 @@ namespace co2
                 reset_value();
                 _tag = detail::tag::exception;
                 new(&_data) std::exception_ptr(e);
-                pop();
             }
 
             suspend_always yield_value(T&& t)
@@ -101,15 +103,6 @@ namespace co2
                     _data.value.~val_t();
             }
 
-            void pop()
-            {
-                if (_head != &_parent)
-                {
-                    _head->swap(_parent);
-                    (*_head)();
-                }
-            }
-            
             template<class Generator>
             static auto yield_from(Generator&& child)
             {

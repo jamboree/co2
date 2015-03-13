@@ -55,10 +55,7 @@ namespace co2 { namespace boost_future_detail
             return {};
         }
 
-        suspend_never final_suspend()
-        {
-            return {};
-        }
+        void finalize() noexcept {}
 
         bool cancellation_requested() const
         {

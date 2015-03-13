@@ -133,7 +133,7 @@ auto f() CO2_RET(return_type, (),
 
 * Unlike `coroutine_handle` in N4286, `coroutine` is ref-counted.
 * `coroutine_traits` depends on return_type only.
-* `promise_type::final_suspend` is ignored.
+* `final_suspend` is replaced with `finalize` in promise requirements, always returns `void`.
 
 ### Additional customization points
 

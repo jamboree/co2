@@ -30,10 +30,7 @@ namespace co2
                 return {};
             }
 
-            suspend_never final_suspend()
-            {
-                return {};
-            }
+            void finalize() noexcept {}
 
             bool cancellation_requested() const
             {

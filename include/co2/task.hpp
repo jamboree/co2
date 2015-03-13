@@ -18,7 +18,7 @@ namespace co2 { namespace task_detail
         atomic_coroutine_handle _then;
         std::atomic<tag> _tag {tag::null};
 
-        void notify()
+        void finalize() noexcept
         {
             if (auto then = _then.exchange_null())
                 then();

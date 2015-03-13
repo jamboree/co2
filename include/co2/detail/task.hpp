@@ -28,12 +28,7 @@ namespace co2 { namespace task_detail
     {
         suspend_never initial_suspend()
         {
-            return{};
-        }
-
-        suspend_never final_suspend()
-        {
-            return{};
+            return {};
         }
 
         bool cancellation_requested() const
@@ -57,14 +52,12 @@ namespace co2 { namespace task_detail
         {
             new(&_data.value) val_t(std::forward<U>(u));
             Base::_tag.store(tag::value, std::memory_order_release);
-            Base::notify();
         }
 
         void set_exception(std::exception_ptr const& e)
         {
             new(&_data.exception) std::exception_ptr(e);
             Base::_tag.store(tag::exception, std::memory_order_release);
-            Base::notify();
         }
 
         T&& get()
@@ -97,14 +90,12 @@ namespace co2 { namespace task_detail
         void set_result()
         {
             Base::_tag.store(tag::value, std::memory_order_release);
-            Base::notify();
         }
 
         void set_exception(std::exception_ptr const& e)
         {
             _e = e;
             Base::_tag.store(tag::exception, std::memory_order_release);
-            Base::notify();
         }
 
         void get()
