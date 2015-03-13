@@ -229,9 +229,9 @@ CO2_RET(co2::recursive_generator<int>, (use_alloc, alloc, a, b),
 ```
 We use `stack_allocator` here:
 ```c++
+std::allocator_arg_t use_alloc;
 co2::stack_buffer<64 * 1024> buf;
 co2::stack_allocator<> alloc(buf);
-std::allocator_arg_t use_alloc;
 for (auto i : recursive_range(use_alloc, alloc, 1, 10))
 {
     std::cout << i << ", ";

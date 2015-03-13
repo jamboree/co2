@@ -8,6 +8,7 @@
 #define CO2_STACK_ALLOCATOR_HPP_INCLUDED
 
 #include <cstddef>
+#include <type_traits>
 
 namespace co2
 {
