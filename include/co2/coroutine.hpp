@@ -8,6 +8,7 @@
 #define CO2_COROUTINE_HPP_INCLUDED
 
 #include <new>
+#include <memory>
 #include <atomic>
 #include <utility>
 #include <exception>
@@ -133,6 +134,9 @@ namespace co2 { namespace detail
         };
     }
 
+    template<class T>
+    using storage_for = std::aligned_storage_t<sizeof(T), alignof(T)>;
+
     struct exception_storage
     {
         void set(std::exception_ptr&& e) noexcept
@@ -148,8 +152,7 @@ namespace co2 { namespace detail
             return ret;
         }
 
-        std::aligned_storage_t<
-            sizeof(std::exception_ptr), alignof(std::exception_ptr)> _data;
+        storage_for<std::exception_ptr> _data;
     };
 
     using sentinel = std::integral_constant<unsigned, ~1u>;
@@ -207,7 +210,31 @@ namespace co2 { namespace detail
     struct frame final : resumable<Promise>
     {
         temp::storage<F::_co2_sz::value> _tmp;
-        std::aligned_storage_t<sizeof(F), alignof(F)> _f;
+        storage_for<F> _f;
+
+        template<class Pack>
+        static frame* create(Pack&& pack)
+        {
+            auto a(to_frame_alloc(pack._co2_get_alloc()));
+            using traits = std::allocator_traits<decltype(a)>;
+            auto p = traits::allocate(a, 1);
+            try
+            {
+                return new(p) frame(std::forward<Pack>(pack));
+            }
+            catch (...)
+            {
+                traits::deallocate(a, p, 1);
+                throw;
+            }
+        }
+
+        template<class A>
+        static typename std::allocator_traits<A>::template rebind_alloc<frame>
+        to_frame_alloc(A const& a)
+        {
+            return a;
+        }
 
         template<class Pack>
         frame(Pack&& pack)
@@ -220,16 +247,19 @@ namespace co2 { namespace detail
         {
             if (detail::before_resume(&this->promise()))
             {
-                (reinterpret_cast<F&>(_f))
+                reinterpret_cast<F&>(_f)
                 (static_cast<coroutine<Promise> const&>(coro), this->_next, this->_eh, &_tmp);
             }
         }
 
         void release(coroutine<> const& coro) noexcept override
         {
-            (reinterpret_cast<F&>(_f))
-            (static_cast<coroutine<Promise> const&>(coro), ++this->_next, this->_eh, &_tmp);
-            delete this;
+            F& f = reinterpret_cast<F&>(_f);
+            f(static_cast<coroutine<Promise> const&>(coro), ++this->_next, this->_eh, &_tmp);
+            auto a(to_frame_alloc(f._co2_get_alloc()));
+            using traits = std::allocator_traits<decltype(a)>;
+            this->~frame();
+            traits::deallocate(a, this, 1);
         }
     };
 
@@ -292,6 +322,18 @@ namespace co2 { namespace detail
     inline void set_result(Promise& p, void_)
     {
         p.set_result();
+    }
+
+    template<class... T>
+    inline std::allocator<void> get_alloc(T&&...)
+    {
+        return {};
+    }
+
+    template<class A, class... T>
+    inline A&& get_alloc(std::allocator_arg_t, A&& a, T&&...)
+    {
+        return std::forward<A>(a);
     }
 
     template<class T>
@@ -679,6 +721,11 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)                     
     struct _co2_pack                                                            \
     {                                                                           \
         _impl_CO2_TUPLE_FOR_EACH(_impl_CO2_DECL_PARAM, capture)                 \
+        decltype(auto) _co2_get_alloc()                                         \
+        {                                                                       \
+            return ::co2::detail::get_alloc(_impl_CO2_TUPLE_FOR_EACH(           \
+                _impl_CO2_FWD_PARAM, capture) ::co2::detail::void_{});          \
+        }                                                                       \
     };                                                                          \
     _co2_pack pack = {_impl_CO2_TUPLE_FOR_EACH(_impl_CO2_FWD_PARAM, capture)};  \
     struct _co2_op : ::co2::detail::temp::default_size, _co2_pack               \
@@ -722,7 +769,7 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)                     
             return ::co2::detail::avoid_plain_return{};                         \
         }                                                                       \
     };                                                                          \
-    _co2_C coro(new ::co2::detail::frame<_co2_P, _co2_op>(std::move(pack)));    \
+    _co2_C coro(::co2::detail::frame<_co2_P, _co2_op>::create(std::move(pack)));\
     coro();                                                                     \
     return coro.promise().get_return_object();                                  \
 }                                                                               \

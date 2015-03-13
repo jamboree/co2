@@ -5,7 +5,7 @@ A C++ stackless coroutine emulation library, providing interface close to [N4286
 
 ## Requirements
 
-- C++11
+- C++14
 - [Boost](http://www.boost.org/)
 
 ## Motivation
@@ -132,7 +132,7 @@ auto f() CO2_RET(return_type, (),
 ## Difference from N4286
 
 * Unlike `coroutine_handle` in N4286, `coroutine` is ref-counted.
-* `coroutine_traits` depends on return_type only, always uses `new` for allocation.
+* `coroutine_traits` depends on return_type only.
 * `promise_type::final_suspend` is ignored.
 
 ### Additional customization points
@@ -178,6 +178,9 @@ __Classes__
 * `co2::shared_task<T>`
 * `co2::suspend_always`
 * `co2::suspend_never`
+* `co2::stack_manager`
+* `co2::stack_buffer<Bytes>`
+* `co2::stack_allocator<T>`
 
 ## Example
 
@@ -202,9 +205,11 @@ for (auto i : range(1, 10))
 
 ### Recursive Generator
 
-Same example as above, using `recursive_generator`:
+Same example as above, using `recursive_generator` with custom allocator:
 ```c++
-auto recursive_range(int a, int b) CO2_RET(co2::recursive_generator<int>, (a, b),
+template<class Alloc>
+auto recursive_range(std::allocator_arg_t use_alloc, Alloc alloc, int a, int b)
+CO2_RET(co2::recursive_generator<int>, (use_alloc, alloc, a, b),
     int n = b - a;
 )
 {
@@ -218,11 +223,17 @@ auto recursive_range(int a, int b) CO2_RET(co2::recursive_generator<int>, (a, b)
     }
 
     n = a + n / 2;
-    CO2_YIELD(recursive_range(a, n));
-    CO2_YIELD(recursive_range(n, b));
+    CO2_YIELD(recursive_range(use_alloc, alloc, a, n));
+    CO2_YIELD(recursive_range(use_alloc, alloc, n, b));
 } CO2_END
-
-for (auto i : recursive_range(1, 10))
+}
+```
+We use `stack_allocator` here:
+```c++
+co2::stack_buffer<64 * 1024> buf;
+co2::stack_allocator<> alloc(buf);
+std::allocator_arg_t use_alloc;
+for (auto i : recursive_range(use_alloc, alloc, 1, 10))
 {
     std::cout << i << ", ";
 }
