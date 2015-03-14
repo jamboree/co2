@@ -40,7 +40,7 @@ namespace co2 { namespace task_detail
     template<class T, class Base>
     struct promise : Base
     {
-        using val_t = typename detail::wrap_reference<T>::type;
+        using val_t = detail::wrap_reference_t<T>;
 
         void set_result(T&& t)
         {
@@ -110,8 +110,7 @@ namespace co2 { namespace task_detail
     template<class Derived, class T, class V, class Promise>
     struct impl
     {
-        struct promise_type
-          : promise<T, Promise>
+        struct promise_type : promise<T, Promise>
         {
             Derived get_return_object()
             {
@@ -145,7 +144,7 @@ namespace co2 { namespace task_detail
 
         bool await_ready() const noexcept
         {
-            return _coro.promise()._tag.load(std::memory_order_relaxed) != task_detail::tag::null;
+            return _coro.promise()._tag.load(std::memory_order_relaxed) != tag::null;
         }
 
         bool await_suspend(coroutine<> const& cb)
@@ -164,7 +163,7 @@ namespace co2 { namespace task_detail
     };
 
     template<class T>
-    auto share(task<T> t) CO2_RET(shared_task<T>, (t))
+    inline auto share(task<T> t) CO2_RET(shared_task<T>, (t))
     {
         CO2_AWAIT_RETURN(t);
     } CO2_END

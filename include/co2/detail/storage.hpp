@@ -25,6 +25,9 @@ namespace co2 { namespace detail
     };
 
     template<class T>
+    using wrap_reference_t = typename wrap_reference<T>::type;
+
+    template<class T>
     union storage
     {
         std::exception_ptr exception;

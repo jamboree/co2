@@ -18,7 +18,7 @@ namespace co2
     {
         struct promise_type
         {
-            using val_t = typename detail::wrap_reference<T>::type;
+            using val_t = detail::wrap_reference_t<T>;
 
             recursive_generator get_return_object()
             {
