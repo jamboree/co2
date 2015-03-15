@@ -63,12 +63,10 @@ namespace co2
 {
     template<class T>
     struct shared_task
-      : task_detail::impl<shared_task<T>, T, task_detail::cref_t<T>,
-            task_detail::shared_promise_base>
+      : task_detail::impl<shared_task<T>, T, task_detail::shared_promise_base>
     {
-        using base_type =
-            task_detail::impl<shared_task<T>, T, task_detail::cref_t<T>,
-                task_detail::shared_promise_base>;
+        using base_type = task_detail::impl<shared_task<T>, T,
+            task_detail::shared_promise_base>;
 
         using base_type::base_type;
 
@@ -77,6 +75,11 @@ namespace co2
         shared_task(task<T>&& other)
           : base_type(task_detail::share(std::move(other)))
         {}
+
+        task_detail::cref_t<T> await_resume()
+        {
+            return this->_coro.promise().get();
+        }
     };
 
     template<class T>

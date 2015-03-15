@@ -38,7 +38,7 @@ namespace co2 { namespace task_detail
     };
     
     template<class T, class Base>
-    struct promise : Base
+    struct promise_data : Base
     {
         using val_t = detail::wrap_reference_t<T>;
 
@@ -67,7 +67,7 @@ namespace co2 { namespace task_detail
             return static_cast<T&&>(_data.value);
         }
 
-        ~promise()
+        ~promise_data()
         {
             switch (Base::_tag.load(std::memory_order_relaxed))
             {
@@ -85,7 +85,7 @@ namespace co2 { namespace task_detail
     };
 
     template<class Base>
-    struct promise<void, Base> : Base
+    struct promise_data<void, Base> : Base
     {
         void set_result()
         {
@@ -107,10 +107,10 @@ namespace co2 { namespace task_detail
         std::exception_ptr _e;
     };
     
-    template<class Derived, class T, class V, class Promise>
+    template<class Derived, class T, class Promise>
     struct impl
     {
-        struct promise_type : promise<T, Promise>
+        struct promise_type : promise_data<T, Promise>
         {
             Derived get_return_object()
             {
@@ -150,11 +150,6 @@ namespace co2 { namespace task_detail
         bool await_suspend(coroutine<> const& cb)
         {
             return _coro.promise().follow(cb);
-        }
-
-        V await_resume()
-        {
-            return _coro.promise().get();
         }
 
     protected:

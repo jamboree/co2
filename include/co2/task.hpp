@@ -32,16 +32,26 @@ namespace co2 { namespace task_detail
                 || !_then.exchange_null();
         }
     };
+
+    struct reset_after_resumed
+    {
+        coroutine<>& coro;
+
+        ~reset_after_resumed()
+        {
+            coro.reset();
+        }
+    };
 }}
 
 namespace co2
 {
     template<class T>
     struct task
-      : task_detail::impl<task<T>, T, T, task_detail::unique_promise_base>
+      : task_detail::impl<task<T>, T, task_detail::unique_promise_base>
     {
         using base_type =
-            task_detail::impl<task<T>, T, T, task_detail::unique_promise_base>;
+            task_detail::impl<task<T>, T, task_detail::unique_promise_base>;
 
         using base_type::base_type;
 
@@ -50,6 +60,12 @@ namespace co2
         task(task&&) = default;
 
         task& operator=(task&& other) = default;
+
+        T await_resume()
+        {
+            task_detail::reset_after_resumed _{this->_coro};
+            return this->_coro.promise().get();
+        }
 
         shared_task<T> share()
         {
