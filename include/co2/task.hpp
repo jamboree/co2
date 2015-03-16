@@ -20,6 +20,8 @@ namespace co2 { namespace task_detail
 
         void finalize() noexcept
         {
+            if (_tag.load(std::memory_order_relaxed) == tag::null)
+                return;
             if (auto then = _then.exchange_null())
                 then();
         }
