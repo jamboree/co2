@@ -389,6 +389,9 @@ namespace co2
     constexpr detail::await_suspend_fn await_suspend{};
     constexpr detail::await_resume_fn await_resume{};
 
+    template<class T>
+    using await_result_t = decltype(await_resume(std::declval<std::add_lvalue_reference_t<T>>()));
+
     template<>
     struct coroutine<void>
     {
