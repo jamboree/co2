@@ -18,6 +18,7 @@
 #include <boost/preprocessor/seq/for_each.hpp>
 #include <boost/preprocessor/variadic/to_seq.hpp>
 #include <boost/preprocessor/facilities/is_empty.hpp>
+#include <co2/detail/void.hpp>
 
 namespace co2
 {
@@ -286,20 +287,6 @@ namespace co2 { namespace detail
         explicit avoid_plain_return() = default;
     };
 
-    struct void_
-    {
-        operator bool() const noexcept
-        {
-            return true;
-        }
-    };
-
-    template<class RHS>
-    inline RHS&& operator,(RHS&& rhs, void_) noexcept
-    {
-        return static_cast<RHS&&>(rhs);
-    }
-
     template<class Promise>
     inline auto final_result(Promise* p) -> decltype(p->set_result())
     {
@@ -388,6 +375,12 @@ namespace co2
     constexpr detail::await_ready_fn await_ready{};
     constexpr detail::await_suspend_fn await_suspend{};
     constexpr detail::await_resume_fn await_resume{};
+
+    template<class T>
+    struct await_result
+    {
+        using type = decltype(await_resume(std::declval<std::add_lvalue_reference_t<T>>()));
+    };
 
     template<class T>
     using await_result_t = decltype(await_resume(std::declval<std::add_lvalue_reference_t<T>>()));
