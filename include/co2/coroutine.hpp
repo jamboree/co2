@@ -567,6 +567,34 @@ namespace co2
 
         std::atomic<coroutine<>::handle_type> _p;
     };
+
+    namespace detail
+    {
+        template<class Task>
+        struct awaken_awaiter
+        {
+            Task& task;
+
+            bool await_ready() const
+            {
+                return co2::await_ready(task);
+            }
+
+            template<class F>
+            auto await_suspend(F&& f) const
+            {
+                return co2::await_suspend(task, std::forward<F>(f));
+            }
+
+            void await_resume() const noexcept {}
+        };
+    }
+
+    template<class Task>
+    inline detail::awaken_awaiter<Task> awaken(Task& task)
+    {
+        return {task};
+    }
 }
 
 #   if defined(BOOST_MSVC)
