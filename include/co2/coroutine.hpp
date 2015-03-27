@@ -163,7 +163,7 @@ namespace co2 { namespace detail
         std::atomic<unsigned> _use_count {1u};
         unsigned _next;
         unsigned _eh;
-        virtual void run(coroutine<> const&) noexcept = 0;
+        virtual void run(coroutine<> const&, bool cancel) noexcept = 0;
         virtual void release(coroutine<> const&) noexcept = 0;
 
         bool done() const noexcept
@@ -244,12 +244,12 @@ namespace co2 { namespace detail
             this->_next = F::_co2_start::value;
         }
 
-        void run(coroutine<> const& coro) noexcept override
+        void run(coroutine<> const& coro, bool cancel) noexcept override
         {
             if (detail::before_resume(&this->promise()))
             {
                 reinterpret_cast<F&>(_f)
-                (static_cast<coroutine<Promise> const&>(coro), this->_next, this->_eh, &_tmp);
+                (static_cast<coroutine<Promise> const&>(coro), this->_next += cancel, this->_eh, &_tmp);
             }
         }
 
@@ -271,7 +271,7 @@ namespace co2 { namespace detail
             this->_next = sentinel::value;
         }
 
-        void run(coroutine<> const& coro) noexcept override {}
+        void run(coroutine<> const& coro, bool cancel) noexcept override {}
 
         void release(coroutine<> const& coro) noexcept override {}
     };
@@ -453,7 +453,12 @@ namespace co2
 
         void operator()() const noexcept
         {
-            _ptr->run(*this);
+            _ptr->run(*this, false);
+        }
+
+        void cancel() const noexcept
+        {
+            _ptr->run(*this, true);
         }
 
         void* to_address() const noexcept
