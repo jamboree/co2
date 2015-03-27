@@ -694,6 +694,14 @@ _impl_CO2_AWAIT(([this](let) __VA_ARGS__), expr, __COUNTER__)                   
 }                                                                               \
 /***/
 
+#define CO2_RETURN_EXCEPTION(e)                                                 \
+{                                                                               \
+    _co2_next = ::co2::detail::sentinel::value;                                 \
+    _co2_promise.set_exception(e);                                              \
+    goto _co2_finalize;                                                         \
+}                                                                               \
+/***/
+
 #define CO2_AWAIT_RETURN(expr) _impl_CO2_AWAIT(CO2_RETURN_FROM, expr, __COUNTER__)
 
 #define CO2_TRY                                                                 \
