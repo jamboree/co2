@@ -163,7 +163,7 @@ namespace co2 { namespace detail
         std::atomic<unsigned> _use_count {1u};
         unsigned _next;
         unsigned _eh;
-        virtual void run(coroutine<> const&) noexcept = 0;
+        virtual void run(coroutine<> const&) = 0;
         virtual void release(coroutine<> const&) noexcept = 0;
 
         bool done() const noexcept
@@ -193,7 +193,7 @@ namespace co2 { namespace detail
         return p->before_resume();
     }
 
-    inline bool before_resume(void*)
+    constexpr bool before_resume(void*)
     {
         return true;
     }
@@ -244,7 +244,7 @@ namespace co2 { namespace detail
             this->_next = F::_co2_start::value;
         }
 
-        void run(coroutine<> const& coro) noexcept override
+        void run(coroutine<> const& coro) override
         {
             if (detail::before_resume(&this->promise()))
             {
@@ -271,7 +271,7 @@ namespace co2 { namespace detail
             this->_next = sentinel::value;
         }
 
-        void run(coroutine<> const& coro) noexcept override {}
+        void run(coroutine<> const& coro) override {}
 
         void release(coroutine<> const& coro) noexcept override {}
     };
@@ -308,6 +308,21 @@ namespace co2 { namespace detail
     inline void set_result(Promise& p, void_)
     {
         p.set_result();
+    }
+
+    template<class Promise>
+    inline auto set_exception(Promise* p, exception_storage& ex) -> decltype(p->set_exception(ex.get()), void_{})
+    {
+        p->set_exception(ex.get());
+        return {};
+    }
+
+    inline auto set_exception(void*, exception_storage& ex)
+    {
+        return [&ex]
+        {
+            std::rethrow_exception(ex.get());
+        };
     }
 
     template<class... T>
@@ -452,6 +467,11 @@ namespace co2
         }
 
         void operator()() const noexcept
+        {
+            _ptr->run(*this);
+        }
+
+        void resume() const
         {
             _ptr->run(*this);
         }
@@ -789,9 +809,10 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)                     
                 _co2_ex.set(std::current_exception());                          \
                 if (_co2_next != ::co2::detail::sentinel::value)                \
                     goto _co2_try_again;                                        \
-                _co2_promise.set_exception(_co2_ex.get());                      \
+                auto fin(::co2::detail::set_exception(&_co2_promise, _co2_ex)); \
                 this->~_co2_F();                                                \
                 _co2_promise.finalize();                                        \
+                fin();                                                          \
             }                                                                   \
             return ::co2::detail::avoid_plain_return{};                         \
         }                                                                       \

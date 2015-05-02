@@ -42,13 +42,6 @@ namespace co2
                 reset_value();
             }
 
-            void set_exception(std::exception_ptr const& e)
-            {
-                reset_value();
-                _tag = detail::tag::exception;
-                new(&_data) std::exception_ptr(e);
-            }
-
             suspend_always yield_value(T&& t)
             {
                 return yield_value<T>(std::forward<T>(t));
@@ -58,36 +51,26 @@ namespace co2
             suspend_always yield_value(U&& u)
             {
                 reset_value();
-                _tag = detail::tag::value;
+                _valid = true;
                 new(&_data) val_t(std::forward<U>(u));
                 return {};
             }
 
             T&& get()
             {
-                return std::forward<T>(_data.value);
-            }
-
-            void rethrow_exception()
-            {
-                if (_tag == detail::tag::exception)
-                {
-                    auto ex(std::move(_data.exception));
-                    _data.exception.~exception_ptr();
-                    std::rethrow_exception(std::move(ex));
-                }
+                return std::forward<T>(*reinterpret_cast<val_t*>(&_data));
             }
 
         private:
 
             void reset_value()
             {
-                if (_tag == detail::tag::value)
-                    _data.value.~val_t();
+                if (_valid)
+                    reinterpret_cast<val_t*>(&_data)->~val_t();
             }
-
-            detail::storage<val_t> _data;
-            detail::tag _tag = detail::tag::null;
+            
+            detail::storage_for<val_t> _data;
+            bool _valid = false;
         };
 
         struct iterator
@@ -107,8 +90,7 @@ namespace co2
 
             void increment()
             {
-                _coro();
-                _coro.promise().rethrow_exception();
+                _coro.resume();
                 if (_coro.done())
                     _coro.reset();
             }

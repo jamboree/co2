@@ -11,14 +11,16 @@ namespace co2 { namespace detail
 {
     struct void_
     {
-        operator bool() const noexcept
+        constexpr operator bool() const noexcept
         {
             return true;
         }
+        
+        void operator()() const {}
     };
 
     template<class RHS>
-    inline RHS&& operator,(RHS&& rhs, void_) noexcept
+    constexpr RHS&& operator,(RHS&& rhs, void_) noexcept
     {
         return static_cast<RHS&&>(rhs);
     }
