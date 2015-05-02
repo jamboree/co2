@@ -14,10 +14,14 @@
 #include <exception>
 #include <boost/config.hpp>
 #include <boost/assert.hpp>
+#include <boost/preprocessor/cat.hpp>
 #include <boost/preprocessor/control/if.hpp>
 #include <boost/preprocessor/seq/for_each.hpp>
+#include <boost/preprocessor/seq/for_each_i.hpp>
 #include <boost/preprocessor/variadic/to_seq.hpp>
 #include <boost/preprocessor/facilities/is_empty.hpp>
+#include <boost/preprocessor/arithmetic/mod.hpp>
+#include <boost/preprocessor/arithmetic/dec.hpp>
 #include <co2/detail/void.hpp>
 
 namespace co2
@@ -742,6 +746,35 @@ else case _co2_curr_eh::value:                                                  
     }                                                                           \
     catch                                                                       \
 /***/
+
+#define _impl_CO2_SWITCH_LABEL(n) BOOST_PP_CAT(BOOST_PP_CAT(_co2_case_, __LINE__), n)
+
+#define _impl_CO2_SWITCH_CASE(r, _, i, e)                                       \
+BOOST_PP_IF(BOOST_PP_MOD(i, 2), , e: goto _impl_CO2_SWITCH_LABEL(i);)           \
+/***/
+
+#define _impl_CO2_UNPAREN(...) __VA_ARGS__
+#define _impl_CO2_SWITCH_BODY_TRUE(i, e) _impl_CO2_SWITCH_LABEL(BOOST_PP_DEC(i)): _impl_CO2_UNPAREN e
+#define _impl_CO2_SWITCH_BODY_FALSE(i, e)
+
+#define _impl_CO2_SWITCH_BODY(r, _, i, e)                                       \
+BOOST_PP_IF(BOOST_PP_MOD(i, 2),                                                 \
+    _impl_CO2_SWITCH_BODY_TRUE, _impl_CO2_SWITCH_BODY_FALSE)(i, e)              \
+/***/
+
+#define _impl_CO2_SWITCH(n, seq)                                                \
+switch (n)                                                                      \
+{                                                                               \
+    BOOST_PP_SEQ_FOR_EACH_I(_impl_CO2_SWITCH_CASE, ~, seq)                      \
+}                                                                               \
+while (false)                                                                   \
+{                                                                               \
+    BOOST_PP_SEQ_FOR_EACH_I(_impl_CO2_SWITCH_BODY, ~, seq)                      \
+        break;                                                                  \
+}                                                                               \
+/***/
+
+#define CO2_SWITCH(n, ...) _impl_CO2_SWITCH(n, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
 
 #define _impl_CO2_TYPE_PARAM(r, _, e) , decltype(e)
 #define _impl_CO2_DECL_PARAM(r, _, e) decltype(e) e;

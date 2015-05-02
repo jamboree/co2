@@ -69,20 +69,6 @@ Inside the coroutine body, there are some restrictions:
 * try-catch block surrouding `await` statements should be replaced with `CO2_TRY` & `CO2_CATCH`
 * identifiers starting with `_co2_` are reserved for this library
 
-### return statement
-* `return` -> `CO2_RETURN()`
-* `return expr` -> `CO2_RETURN(expr)`
-* `return void-expr` -> `CO2_RETURN_FROM(void-expr)` (useful in generic code)
-
-### try-catch
-```c++
-CO2_TRY {...}
-CO2_CATCH (std::runtime_error& e) {...}
-catch (std::exception& e) {...}
-```
-
-Note that only the first `catch` clause needs to be spelled as `CO2_CATCH`, the subsequent ones should use the plain `catch`.
-
 ### await & yield
 
 In _CO2_, `await` is implemented as a statement instead of an expression due to the emulation limitation, and it has 4 variants: `CO2_AWAIT`, `CO2_AWAIT_SET`, `CO2_AWAIT_LET` and `CO2_AWAIT_RETURN`.
@@ -129,6 +115,50 @@ auto f() CO2_RET(return_type, (),
 } CO2_END
 ```
 
+### Replacements for normal language constructs
+
+Sometimes you can't use the normal language constructs directly, in such cases, you need to use the macro replacements instead.
+
+#### return
+
+* `return` -> `CO2_RETURN()`
+* `return expr` -> `CO2_RETURN(expr)`
+* `return void-expr` -> `CO2_RETURN_FROM(void-expr)` (useful in generic code)
+
+#### try-catch
+
+Needed only if the try-block is involved with the await/yield emulation.
+
+```c++
+CO2_TRY {...}
+CO2_CATCH (std::runtime_error& e) {...}
+catch (std::exception& e) {...}
+```
+
+Note that only the first `catch` clause needs to be spelled as `CO2_CATCH`, the subsequent ones should use the plain `catch`.
+
+#### switch-case
+
+Needed only if the switch-body is involved with the await/yield emulation.
+
+```c++
+CO2_SWITCH (which,
+case 1,
+(
+    ...
+),
+case N,
+(
+    ...
+),
+default,
+(
+    ...
+))
+```
+
+Note that `break` is still needed if you don't want the control flow to go through the subsequnet cases, also note that `continue` **cannot** be used in `CO2_SWITCH` to continue the outer loop due to some implementation details.
+
 ## Difference from N4286
 
 * Unlike `coroutine_handle` in N4286, `coroutine` is ref-counted.
@@ -168,6 +198,7 @@ __Macros__
 * `CO2_RETURN_FROM`
 * `CO2_TRY`
 * `CO2_CATCH`
+* `CO2_SWITCH`
 * `CO2_RESERVE`
 
 __Classes__
