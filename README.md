@@ -278,6 +278,7 @@ This example uses the sister library [act](https://github.com/jamboree/act) to c
 auto session(asio::ip::tcp::socket sock) CO2_RET(co2::task<>, (sock),
     char buf[1024];
     std::size_t len;
+    act::error_code ec;
 )
 {
     CO2_TRY
@@ -285,7 +286,9 @@ auto session(asio::ip::tcp::socket sock) CO2_RET(co2::task<>, (sock),
         std::cout << "connected: " << sock.remote_endpoint() << std::endl;
         for ( ; ; )
         {
-            CO2_AWAIT_SET(len, act::read_some(sock, asio::buffer(buf)));
+            CO2_AWAIT_SET(len, act::read_some(sock, asio::buffer(buf), ec));
+            if (ec == asio::error::eof)
+                CO2_RETURN();
             CO2_AWAIT(act::write(sock, asio::buffer(buf, len)));
         }
     }
