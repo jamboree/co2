@@ -17,7 +17,7 @@ auto session(asio::ip::tcp::socket sock) CO2_RET(co2::task<>, (sock),
     CO2_TRY
     {
         std::cout << "connected: " << sock.remote_endpoint() << std::endl;
-        for (;; )
+        for ( ; ; )
         {
             CO2_AWAIT_SET(len, act::read_some(sock, asio::buffer(buf), ec));
             if (ec == asio::error::eof)
@@ -37,11 +37,8 @@ auto server(asio::io_service& io, unsigned port) CO2_RET(co2::task<>, (io, port)
 )
 {
     std::cout << "server running at: " << endpoint << std::endl;
-    for (;; )
-        CO2_AWAIT_LET(auto&& sock, act::accept(acceptor),
-        {
-            session(std::move(sock));
-        });
+    for ( ; ; )
+        CO2_AWAIT_APPLY(session, act::accept(acceptor));
 } CO2_END
 
 int main(int argc, char *argv[])

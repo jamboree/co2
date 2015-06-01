@@ -95,8 +95,13 @@ CO2_AWAIT_LET(auto i, task,
 
 Equivalent to `return await expr`.
 
-As `yield` is defined in N4286, _CO2_ also provides the corresponding `CO2_YIELD`.
-`CO2_YIELD(expr)` is equivalent to `CO2_AWAIT(<this-promise>.yield_value(expr))`.
+* `CO2_AWAIT_APPLY(f, expr)`
+
+Equivalent to `f(await expr)`, where `f` can be a unary function or macro.
+
+* `CO2_YIELD(expr)`
+
+Equivalent to `CO2_AWAIT(<this-promise>.yield_value(expr))`, as how `yield` is defined in N4286.
 
 The fact that `await` in _CO2_ is not an expression has an implication on object lifetime, consider this case:
 
@@ -193,6 +198,7 @@ __Macros__
 * `CO2_AWAIT_SET`
 * `CO2_AWAIT_LET`
 * `CO2_AWAIT_RETURN`
+* `CO2_AWAIT_APPLY`
 * `CO2_YIELD`
 * `CO2_RETURN`
 * `CO2_RETURN_FROM`
@@ -305,10 +311,7 @@ auto server(asio::io_service& io, unsigned port) CO2_RET(co2::task<>, (io, port)
 {
     std::cout << "server running at: " << endpoint << std::endl;
     for ( ; ; )
-        CO2_AWAIT_LET(auto&& sock, act::accept(acceptor),
-        {
-            session(std::move(sock));
-        });
+        CO2_AWAIT_APPLY(session, act::accept(acceptor));
 } CO2_END
 ```
 

@@ -694,6 +694,7 @@ namespace co2
 }                                                                               \
 /***/
 
+#define CO2_AWAIT_APPLY(f, expr) _impl_CO2_AWAIT(f, expr, __COUNTER__)
 #define CO2_AWAIT_SET(var, expr) _impl_CO2_AWAIT(var =, expr, __COUNTER__)
 #define CO2_AWAIT(expr) _impl_CO2_AWAIT(, expr, __COUNTER__)
 #define CO2_AWAIT_LET(let, expr, ...)                                           \
