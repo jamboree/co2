@@ -9,6 +9,7 @@
 
 #include <atomic>
 #include <co2/coroutine.hpp>
+#include <co2/task_error.hpp>
 #include <co2/detail/storage.hpp>
 
 namespace co2
@@ -142,8 +143,10 @@ namespace co2 { namespace task_detail
             _coro.reset();
         }
 
-        bool await_ready() const noexcept
+        bool await_ready() const
         {
+            if (!_coro)
+                throw task_error(std::error_code(task_errc::no_state));
             return _coro.promise()._tag.load(std::memory_order_relaxed) != tag::null;
         }
 
