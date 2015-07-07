@@ -187,6 +187,7 @@ __Headers__
 * `#include <co2/recursive_generator.hpp>`
 * `#include <co2/task.hpp>`
 * `#include <co2/shared_task.hpp>`
+* `#include <co2/wait.hpp>`
 * `#include <co2/adapted/boost_future.hpp>`
 * `#include <co2/adapted/boost_optional.hpp>`
 * `#include <co2/utility/stack_allocator.hpp>`
