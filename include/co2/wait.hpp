@@ -12,16 +12,39 @@
 #include <condition_variable>
 #include <co2/coroutine.hpp>
 
-namespace co2 { namespace detail
+namespace co2 { namespace wait_detail
 {
-    template<class Awaitable>
-    auto wait_impl(Awaitable& a, std::mutex& mtx, std::condition_variable& cond, bool& done)
-    CO2_RET(co2::coroutine<>, (a, mtx, cond, done))
+    // A promise that allows an exception to be thrown out of the coroutine.
+    struct promise
     {
-        CO2_AWAIT(co2::awaken(a));
+        suspend_never initial_suspend()
+        {
+            return {};
+        }
+
+        void finalize() noexcept {}
+
+        bool cancellation_requested() const
+        {
+            return false;
+        }
+
+        coroutine<promise> get_return_object()
+        {
+            return coroutine<promise>(this);
+        }
+
+        void set_result() {}
+    };
+
+    template<class Awaitable>
+    auto run(Awaitable& a, std::mutex& mtx, std::condition_variable& cond, bool& not_ready)
+    CO2_RET(coroutine<promise>, (a, mtx, cond, not_ready))
+    {
+        CO2_AWAIT(awaken(a));
         {
             std::unique_lock<std::mutex> lock(mtx);
-            done = true;
+            not_ready = false;
         }
         cond.notify_one();
     } CO2_END
@@ -32,22 +55,22 @@ namespace co2
     template<class Awaitable>
     void wait(Awaitable&& a)
     {
-        if (co2::await_ready(a))
+        if (await_ready(a))
             return;
 
         std::mutex mtx;
         std::condition_variable cond;
+        bool not_ready = true;
+        wait_detail::run(a, mtx, cond, not_ready);
         std::unique_lock<std::mutex> lock(mtx);
-        bool done = false;
-        detail::wait_impl(a, mtx, cond, done);
-        cond.wait(lock, [&done] { return done; });
+        while (not_ready) cond.wait(lock);
     }
 
     template<class Awaitable>
     inline decltype(auto) get(Awaitable&& a)
     {
         wait(a);
-        return co2::await_resume(a);
+        return await_resume(a);
     }
 }
 
