@@ -14,32 +14,34 @@
 
 namespace co2 { namespace wait_detail
 {
-    // A promise that allows an exception to be thrown out of the coroutine.
-    struct promise
+    struct result
     {
-        suspend_never initial_suspend()
+        struct promise_type
         {
-            return {};
-        }
+            suspend_never initial_suspend()
+            {
+                return{};
+            }
 
-        void finalize() noexcept {}
+            void finalize() noexcept {}
 
-        bool cancellation_requested() const
-        {
-            return false;
-        }
+            bool cancellation_requested() const
+            {
+                return false;
+            }
 
-        coroutine<promise> get_return_object()
-        {
-            return coroutine<promise>(this);
-        }
+            result get_return_object()
+            {
+                return {};
+            }
 
-        void set_result() {}
+            void set_result() {}
+        };
     };
 
     template<class Awaitable>
     auto run(Awaitable& a, std::mutex& mtx, std::condition_variable& cond, bool& not_ready)
-    CO2_RET(coroutine<promise>, (a, mtx, cond, not_ready))
+    CO2_RET(result, (a, mtx, cond, not_ready))
     {
         CO2_AWAIT(awaken(a));
         {

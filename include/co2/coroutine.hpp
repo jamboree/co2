@@ -854,7 +854,7 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)                     
     using _co2_A = decltype(_co2_a);                                            \
     using _co2_FR = ::co2::detail::frame<_co2_P, _co2_F, _co2_A>;               \
     _co2_C _co2_c(_co2_FR::create(std::move(_co2_a), std::move(_co2_k)));       \
-    _co2_c();                                                                   \
+    _co2_c.resume();                                                            \
     return _co2_c.promise().get_return_object();                                \
 }                                                                               \
 /***/
