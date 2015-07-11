@@ -9,8 +9,11 @@
 
 #include <mutex>
 #include <thread>
+#include <cstddef>
+#include <type_traits>
 #include <condition_variable>
 #include <co2/coroutine.hpp>
+#include <co2/utility/fixed_allocator.hpp>
 
 namespace co2 { namespace wait_detail
 {
@@ -39,9 +42,9 @@ namespace co2 { namespace wait_detail
         };
     };
 
-    template<class Awaitable>
-    auto run(Awaitable& a, std::mutex& mtx, std::condition_variable& cond, bool& not_ready)
-    CO2_RET(result, (a, mtx, cond, not_ready))
+    template<class Alloc, class Awaitable>
+    auto run(Alloc alloc, Awaitable& a, std::mutex& mtx, std::condition_variable& cond, bool& not_ready)
+    CO2_RET(result, (a, mtx, cond, not_ready), CO2_RESERVE(sizeof(void*));)
     {
         CO2_AWAIT(awaken(a));
         {
@@ -49,7 +52,7 @@ namespace co2 { namespace wait_detail
             not_ready = false;
         }
         cond.notify_one();
-    } CO2_END
+    } CO2_END_ALLOC(alloc)
 }}
 
 namespace co2
@@ -63,7 +66,8 @@ namespace co2
         std::mutex mtx;
         std::condition_variable cond;
         bool not_ready = true;
-        wait_detail::run(a, mtx, cond, not_ready);
+        std::aligned_storage_t<sizeof(void*) * 9, alignof(std::max_align_t)> buf;
+        wait_detail::run(make_fixed_allocator(buf), a, mtx, cond, not_ready);
         std::unique_lock<std::mutex> lock(mtx);
         while (not_ready) cond.wait(lock);
     }

@@ -86,24 +86,23 @@ node::ptr_t create_right_tree_from(const std::string& root)
 
 // recursively walk the tree, delivering values in order
 template<class Alloc>
-auto traverse(std::allocator_arg_t use_alloc, Alloc alloc, node::ptr_t n)
-CO2_RET(co2::recursive_generator<std::string>, (use_alloc, alloc, n))
+auto traverse(Alloc alloc, node::ptr_t n)
+CO2_RET(co2::recursive_generator<std::string>, (alloc, n))
 {
     if (n->left)
-        CO2_YIELD(traverse(use_alloc, alloc, n->left));
+        CO2_YIELD(traverse(alloc, n->left));
     CO2_YIELD(n->value);
     if (n->right)
-        CO2_YIELD(traverse(use_alloc, alloc, n->right));
-} CO2_END
+        CO2_YIELD(traverse(alloc, n->right));
+} CO2_END_ALLOC(alloc)
 
 int main()
 {
-    std::allocator_arg_t use_alloc;
     co2::stack_buffer<2 * 1024> buf;
     co2::stack_allocator<> alloc(buf);
     {
         node::ptr_t left_d(create_left_tree_from("d"));
-        auto left_d_reader(traverse(use_alloc, alloc, left_d));
+        auto left_d_reader(traverse(alloc, left_d));
         std::cout << "left tree from d:\n";
         std::copy(std::begin(left_d_reader),
                   std::end(left_d_reader),
@@ -111,7 +110,7 @@ int main()
         std::cout << std::endl;
 
         node::ptr_t right_b(create_right_tree_from("b"));
-        auto right_b_reader(traverse(use_alloc, alloc, right_b));
+        auto right_b_reader(traverse(alloc, right_b));
         std::cout << "right tree from b:\n";
         std::copy(std::begin(right_b_reader),
                   std::end(right_b_reader),
@@ -119,7 +118,7 @@ int main()
         std::cout << std::endl;
 
         node::ptr_t right_x(create_right_tree_from("x"));
-        auto right_x_reader(traverse(use_alloc, alloc, right_x));
+        auto right_x_reader(traverse(alloc, right_x));
         std::cout << "right tree from x:\n";
         std::copy(std::begin(right_x_reader),
                   std::end(right_x_reader),
@@ -129,10 +128,10 @@ int main()
     buf.clear();
     {
         node::ptr_t left_d(create_left_tree_from("d"));
-        auto left_d_reader(traverse(use_alloc, alloc, left_d));
+        auto left_d_reader(traverse(alloc, left_d));
 
         node::ptr_t right_b(create_right_tree_from("b"));
-        auto right_b_reader(traverse(use_alloc, alloc, right_b));
+        auto right_b_reader(traverse(alloc, right_b));
 
         std::cout << "left tree from d == right tree from b? "
                   << std::boolalpha
@@ -144,10 +143,10 @@ int main()
     buf.clear();
     {
         node::ptr_t left_d(create_left_tree_from("d"));
-        auto left_d_reader(traverse(use_alloc, alloc, left_d));
+        auto left_d_reader(traverse(alloc, left_d));
 
         node::ptr_t right_x(create_right_tree_from("x"));
-        auto right_x_reader(traverse(use_alloc, alloc, right_x));
+        auto right_x_reader(traverse(alloc, right_x));
 
         std::cout << "left tree from d == right tree from x? "
                   << std::boolalpha

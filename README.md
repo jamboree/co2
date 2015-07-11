@@ -22,8 +22,7 @@ return_type function(Args... args)
 CO2_BEGIN(return_type, (args...), locals...)
 {
     <coroutine-body>
-}
-CO2_END
+} CO2_END
 ```
 
 Note this line
@@ -34,7 +33,7 @@ is just a plain-old function prototype, you can forward declare it as well.
 
 Ready for preprocessor magic? here we go...
 
-The coroutine body is surrounded with 2 macros: `CO2_BEGIN` and `CO2_END`.
+The coroutine body has to be surrounded with 2 macros: `CO2_BEGIN` and `CO2_END`, or their siblings which we'll see later.
 
 The macro `CO2_BEGIN` requires you to provide some parameters:
 * _return_type_ - same as the function's return-type
@@ -68,6 +67,8 @@ Inside the coroutine body, there are some restrictions:
 * `return` should be replaced with `CO2_RETURN`/`CO2_RETURN_FROM`
 * try-catch block surrouding `await` statements should be replaced with `CO2_TRY` & `CO2_CATCH`
 * identifiers starting with `_co2_` are reserved for this library
+
+After defining the coroutine body, remember to close it with `CO2_END` or `CO2_END_ALLOC`, the latter allows you to specify an allocator from the parameters.
 
 ### await & yield
 
@@ -196,6 +197,7 @@ __Macros__
 * `CO2_BEGIN`
 * `CO2_RET`
 * `CO2_END`
+* `CO2_END_ALLOC`
 * `CO2_AWAIT`
 * `CO2_AWAIT_SET`
 * `CO2_AWAIT_LET`
@@ -248,8 +250,8 @@ for (auto i : range(1, 10))
 Same example as above, using `recursive_generator` with custom allocator:
 ```c++
 template<class Alloc>
-auto recursive_range(std::allocator_arg_t use_alloc, Alloc alloc, int a, int b)
-CO2_RET(co2::recursive_generator<int>, (use_alloc, alloc, a, b),
+auto recursive_range(Alloc alloc, int a, int b)
+CO2_RET(co2::recursive_generator<int>, (alloc, a, b),
     int n = b - a;
 )
 {
@@ -263,16 +265,15 @@ CO2_RET(co2::recursive_generator<int>, (use_alloc, alloc, a, b),
     }
 
     n = a + n / 2;
-    CO2_YIELD(recursive_range(use_alloc, alloc, a, n));
-    CO2_YIELD(recursive_range(use_alloc, alloc, n, b));
-} CO2_END
+    CO2_YIELD(recursive_range(alloc, a, n));
+    CO2_YIELD(recursive_range(alloc, n, b));
+} CO2_END_ALLOC(alloc)
 ```
 We use `stack_allocator` here:
 ```c++
-std::allocator_arg_t use_alloc;
 co2::stack_buffer<64 * 1024> buf;
 co2::stack_allocator<> alloc(buf);
-for (auto i : recursive_range(use_alloc, alloc, 1, 10))
+for (auto i : recursive_range(alloc, 1, 10))
 {
     std::cout << i << ", ";
 }

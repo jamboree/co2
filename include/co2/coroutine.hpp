@@ -803,9 +803,12 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)                     
     struct _co2_K                                                               \
     {                                                                           \
         _impl_CO2_TUPLE_FOR_EACH(_impl_CO2_DECL_PARAM, capture)                 \
+        auto _co2_alloc_from_params()                                           \
+        {                                                                       \
+            return ::co2::detail::get_alloc(_impl_CO2_TUPLE_FOR_EACH(           \
+                _impl_CO2_FWD_PARAM, capture) ::co2::detail::void_{});          \
+        }                                                                       \
     };                                                                          \
-    auto _co2_a(::co2::detail::get_alloc(_impl_CO2_TUPLE_FOR_EACH(              \
-        _impl_CO2_FWD_PARAM, capture) ::co2::detail::void_{}));                 \
     _co2_K _co2_k = {_impl_CO2_TUPLE_FOR_EACH(_impl_CO2_FWD_PARAM, capture)};   \
     struct _co2_F : ::co2::detail::temp::default_size, _co2_K                   \
     {                                                                           \
@@ -829,7 +832,7 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)                     
                     CO2_AWAIT(_co2_promise.initial_suspend());                  \
 /***/
 
-#define CO2_END                                                                 \
+#define _impl_CO2_END_FRAME                                                     \
                     _co2_next = ::co2::detail::sentinel::value;                 \
                     ::co2::detail::final_result(&_co2_promise);                 \
                 _co2_finalize:                                                  \
@@ -851,9 +854,22 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)                     
             return ::co2::detail::avoid_plain_return{};                         \
         }                                                                       \
     };                                                                          \
-    using _co2_A = decltype(_co2_a);                                            \
-    using _co2_FR = ::co2::detail::frame<_co2_P, _co2_F, _co2_A>;               \
+/***/
+
+#define CO2_END                                                                 \
+    _impl_CO2_END_FRAME                                                         \
+    auto _co2_a(_co2_k._co2_alloc_from_params());                               \
+    using _co2_FR = ::co2::detail::frame<_co2_P, _co2_F, decltype(_co2_a)>;     \
     _co2_C _co2_c(_co2_FR::create(std::move(_co2_a), std::move(_co2_k)));       \
+    _co2_c.resume();                                                            \
+    return _co2_c.promise().get_return_object();                                \
+}                                                                               \
+/***/
+
+#define CO2_END_ALLOC(a)                                                        \
+    _impl_CO2_END_FRAME                                                         \
+    using _co2_FR = ::co2::detail::frame<_co2_P, _co2_F, decltype(a)>;          \
+    _co2_C _co2_c(_co2_FR::create(a, std::move(_co2_k)));                       \
     _co2_c.resume();                                                            \
     return _co2_c.promise().get_return_object();                                \
 }                                                                               \
