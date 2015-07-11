@@ -32,8 +32,6 @@ namespace co2 { namespace task_detail
 
         void finalize() noexcept
         {
-            if (_tag.load(std::memory_order_relaxed) == tag::null)
-                return;
             while (_lock.exchange(2u, std::memory_order_acquire));
             unlocker _{_lock};
             for (auto& f : _followers)
