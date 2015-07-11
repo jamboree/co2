@@ -35,7 +35,10 @@ namespace co2 { namespace task_detail
             while (_lock.exchange(2u, std::memory_order_acquire));
             unlocker _{_lock};
             for (auto& f : _followers)
+            {
                 f();
+                f.reset();
+            }
             _followers.clear();
             _followers.shrink_to_fit();
         }
