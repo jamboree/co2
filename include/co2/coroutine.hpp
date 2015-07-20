@@ -34,7 +34,7 @@ namespace co2
     {
         using promise_type = typename R::promise_type;
     };
-    
+
     template<bool flag>
     struct suspend
     {
@@ -164,11 +164,16 @@ namespace co2 { namespace detail
 
     struct resumable_base
     {
-        std::atomic<unsigned> _use_count {1u};
         unsigned _next;
         unsigned _eh;
-        virtual void run(coroutine<> const&) = 0;
-        virtual void release(coroutine<> const&) noexcept = 0;
+        virtual void run(coroutine<>&) = 0;
+        virtual void release() noexcept = 0;
+
+        void unwind(coroutine<>& coro)
+        {
+            ++_next;
+            run(coro);
+        }
 
         bool done() const noexcept
         {
@@ -189,27 +194,6 @@ namespace co2 { namespace detail
             return static_cast<resumable*>(p);
         }
     };
-
-    template<class Promise>
-    inline auto before_resume(Promise* p) -> decltype(p->before_resume())
-    {
-        decltype(p->after_suspend()) is_also_required();
-        return p->before_resume();
-    }
-
-    constexpr bool before_resume(void*)
-    {
-        return true;
-    }
-
-    template<class Promise>
-    inline auto after_suspend(Promise* p) -> decltype(p->after_suspend())
-    {
-        decltype(p->before_resume()) is_also_required();
-        p->after_suspend();
-    }
-
-    inline void after_suspend(void*) {}
 
     template<class Alloc, class T>
     using rebind_alloc_t =
@@ -248,19 +232,14 @@ namespace co2 { namespace detail
             this->_next = F::_co2_start::value;
         }
 
-        void run(coroutine<> const& coro) override
+        void run(coroutine<>& coro) override
         {
-            if (detail::before_resume(&this->promise()))
-            {
-                reinterpret_cast<F&>(_f)
-                (static_cast<coroutine<Promise> const&>(coro), this->_next, this->_eh, &_tmp);
-            }
+            reinterpret_cast<F&>(_f)
+            (static_cast<coroutine<Promise>&>(coro), this->_next, this->_eh, &_tmp);
         }
 
-        void release(coroutine<> const& coro) noexcept override
+        void release() noexcept override
         {
-            F& f = reinterpret_cast<F&>(_f);
-            f(static_cast<coroutine<Promise> const&>(coro), ++this->_next, this->_eh, &_tmp);
             alloc_t alloc(static_cast<alloc_t&&>(*this));
             this->~frame();
             traits::deallocate(alloc, this, 1);
@@ -415,12 +394,6 @@ namespace co2
 
         explicit coroutine(handle_type handle) noexcept : _ptr(handle) {}
 
-        coroutine(coroutine const& other) : _ptr(other._ptr)
-        {
-            if (_ptr)
-                _ptr->_use_count.fetch_add(1u, std::memory_order_relaxed);
-        }
-        
         coroutine(coroutine&& other) noexcept : _ptr(other._ptr)
         {
             other._ptr = nullptr;
@@ -428,19 +401,23 @@ namespace co2
 
         coroutine& operator=(coroutine other) noexcept
         {
-            std::swap(_ptr, other._ptr);
-            return *this;
+            this->~coroutine();
+            return *new(this) coroutine(std::move(other));
         }
 
         ~coroutine()
         {
-            release_frame();
+            if (_ptr)
+                _ptr->unwind(*this);
         }
 
         void reset() noexcept
         {
-            release_frame();
-            _ptr = nullptr;
+            if (_ptr)
+            {
+                _ptr->unwind(*this);
+                _ptr = nullptr;
+            }
         }
 
         void swap(coroutine& other) noexcept
@@ -453,29 +430,17 @@ namespace co2
             return !!_ptr;
         }
 
-        unsigned use_count() const noexcept
-        {
-            return _ptr ? _ptr->_use_count.load(std::memory_order_relaxed) : 0;
-        }
-
-        bool unique() const noexcept
-        {
-            if (_ptr)
-                return _ptr->_use_count.load(std::memory_order_relaxed) == 1u;
-            return false;
-        }
-
         bool done() const noexcept
         {
             return _ptr->done();
         }
 
-        void operator()() const noexcept
+        void operator()() noexcept
         {
             _ptr->run(*this);
         }
 
-        void resume() const
+        void resume()
         {
             _ptr->run(*this);
         }
@@ -493,12 +458,6 @@ namespace co2
         }
 
     protected:
-
-        void release_frame() noexcept
-        {
-            if (_ptr && _ptr->_use_count.fetch_sub(1u, std::memory_order_relaxed) == 1u)
-                _ptr->release(*this);
-        }
 
         detail::resumable_base* _ptr;
     };
@@ -527,33 +486,43 @@ namespace co2
         {
             return static_cast<detail::resumable<Promise>*>(_ptr)->promise();
         }
+
+        static void destroy(Promise* p)
+        {
+            detail::resumable<Promise>::from_promise(p)->release();
+        }
     };
 
     struct coroutine<>::promise_type
     {
-        suspend_never initial_suspend()
-        {
-            return {};
-        }
-
-        void finalize() noexcept {}
-
-        bool cancellation_requested() const
+        bool initial_suspend() noexcept
         {
             return false;
         }
 
-        coroutine<promise_type> get_return_object()
+        bool final_suspend() noexcept
         {
-            return coroutine<promise_type>(this);
+            return false;
         }
 
-        void set_result() {}
+        bool cancellation_requested() const noexcept
+        {
+            return false;
+        }
 
-        void set_exception(std::exception_ptr const&)
+        coroutine<promise_type> get_return_object(coroutine<promise_type>& coro)
+        {
+            return std::move(coro);
+        }
+
+        void set_result() noexcept {}
+
+        void set_exception(std::exception_ptr const&) noexcept
         {
             std::terminate();
         }
+
+        void cancel() noexcept {}
     };
 
     template<class Promise>
@@ -631,9 +600,9 @@ namespace co2
 #   else
 #   define _impl_CO2_PUSH_NAME_HIDDEN_WARNING
 #   define _impl_CO2_POP_WARNING
-    // The IS_EMPTY trick is from:
-    // http://gustedt.wordpress.com/2010/06/08/detect-empty-macro-arguments/
-    // IS_EMPTY {
+// The IS_EMPTY trick is from:
+// http://gustedt.wordpress.com/2010/06/08/detect-empty-macro-arguments/
+// IS_EMPTY {
 #   define _impl_CO2_ARG16(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, ...) _15
 #   define _impl_CO2_HAS_COMMA(...) _impl_CO2_ARG16(__VA_ARGS__, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0)
 #   define _impl_CO2_TRIGGER_PARENTHESIS_(...) ,
@@ -669,10 +638,7 @@ namespace co2
             _co2_next = next;                                                   \
             if (::co2::await_suspend(_co2_await::get(_co2_tmp), _co2_c),        \
                 ::co2::detail::void_{})                                         \
-            {                                                                   \
-                ::co2::detail::after_suspend(&_co2_promise);                    \
                 return ::co2::detail::avoid_plain_return{};                     \
-            }                                                                   \
         }                                                                       \
     }                                                                           \
     catch (...)                                                                 \
@@ -683,14 +649,31 @@ namespace co2
     case next:                                                                  \
     if (_co2_promise.cancellation_requested())                                  \
     {                                                                           \
-        _co2_next = ::co2::detail::sentinel::value;                             \
         case __COUNTER__:                                                       \
         _co2_await::reset(_co2_tmp);                                            \
+        _co2_promise.cancel();                                                  \
         goto _co2_finalize;                                                     \
     }                                                                           \
     ::co2::detail::temp::auto_reset<_co2_expr_t, _co2_sz::value>                \
         _co2_reset = {_co2_tmp};                                                \
     ret (::co2::await_resume(_co2_await::get(_co2_tmp)));                       \
+}                                                                               \
+/***/
+
+#define _impl_CO2_SUSPEND(expr, next)                                           \
+{                                                                               \
+    if (_co2_promise.expr)                                                      \
+    {                                                                           \
+        _co2_next = next;                                                       \
+        return ::co2::detail::avoid_plain_return{};                             \
+    }                                                                           \
+    case next:                                                                  \
+    if (_co2_promise.cancellation_requested())                                  \
+    {                                                                           \
+        case __COUNTER__:                                                       \
+        _co2_promise.cancel();                                                  \
+        goto _co2_finalize;                                                     \
+    }                                                                           \
 }                                                                               \
 /***/
 
@@ -715,14 +698,6 @@ _impl_CO2_AWAIT(([this](let) __VA_ARGS__), expr, __COUNTER__)                   
 {                                                                               \
     _co2_next = ::co2::detail::sentinel::value;                                 \
     ::co2::detail::set_result(_co2_promise, (__VA_ARGS__, ::co2::detail::void_{}));\
-    goto _co2_finalize;                                                         \
-}                                                                               \
-/***/
-
-#define CO2_RETURN_EXCEPTION(e)                                                 \
-{                                                                               \
-    _co2_next = ::co2::detail::sentinel::value;                                 \
-    _co2_promise.set_exception(e);                                              \
     goto _co2_finalize;                                                         \
 }                                                                               \
 /***/
@@ -817,7 +792,7 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)                     
         _co2_F(_co2_K&& pack) : _co2_K(std::move(pack)) {}                      \
         using _co2_start = std::integral_constant<unsigned, __COUNTER__>;       \
         ::co2::detail::avoid_plain_return operator()                            \
-        (_co2_C const& _co2_c, unsigned& _co2_next, unsigned& _co2_eh, void* _co2_tmp)\
+        (_co2_C& _co2_c, unsigned& _co2_next, unsigned& _co2_eh, void* _co2_tmp)\
         {                                                                       \
             auto& _co2_promise = _co2_c.promise();                              \
             ::co2::detail::exception_storage _co2_ex;                           \
@@ -829,7 +804,7 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)                     
                 case _co2_start::value:                                         \
                     using _co2_curr_eh = ::co2::detail::sentinel;               \
                     _co2_eh = _co2_curr_eh::value;                              \
-                    CO2_AWAIT(_co2_promise.initial_suspend());                  \
+                    _impl_CO2_SUSPEND(initial_suspend(), __COUNTER__);          \
 /***/
 
 #define _impl_CO2_END_FRAME                                                     \
@@ -837,7 +812,9 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)                     
                     ::co2::detail::final_result(&_co2_promise);                 \
                 _co2_finalize:                                                  \
                     this->~_co2_F();                                            \
-                    _co2_promise.finalize();                                    \
+                    _co2_c.detach();                                            \
+                    if (!_co2_promise.final_suspend())                          \
+                        _co2_C::destroy(&_co2_promise);                         \
                 }                                                               \
             }                                                                   \
             catch (...)                                                         \
@@ -848,7 +825,9 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)                     
                     goto _co2_try_again;                                        \
                 auto fin(::co2::detail::set_exception(&_co2_promise, _co2_ex)); \
                 this->~_co2_F();                                                \
-                _co2_promise.finalize();                                        \
+                _co2_c.detach();                                                \
+                if (!_co2_promise.final_suspend())                              \
+                    _co2_C::destroy(&_co2_promise);                             \
                 fin();                                                          \
             }                                                                   \
             return ::co2::detail::avoid_plain_return{};                         \
@@ -861,8 +840,9 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)                     
     auto _co2_a(_co2_k._co2_alloc_from_params());                               \
     using _co2_FR = ::co2::detail::frame<_co2_P, _co2_F, decltype(_co2_a)>;     \
     _co2_C _co2_c(_co2_FR::create(std::move(_co2_a), std::move(_co2_k)));       \
+    auto& promise = _co2_c.promise();                                           \
     _co2_c.resume();                                                            \
-    return _co2_c.promise().get_return_object();                                \
+    return promise.get_return_object(_co2_c);                                   \
 }                                                                               \
 /***/
 
@@ -870,8 +850,9 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)                     
     _impl_CO2_END_FRAME                                                         \
     using _co2_FR = ::co2::detail::frame<_co2_P, _co2_F, decltype(a)>;          \
     _co2_C _co2_c(_co2_FR::create(a, std::move(_co2_k)));                       \
+    auto& promise = _co2_c.promise();                                           \
     _co2_c.resume();                                                            \
-    return _co2_c.promise().get_return_object();                                \
+    return promise.get_return_object(_co2_c);                                   \
 }                                                                               \
 /***/
 
