@@ -18,6 +18,8 @@ namespace co2
 
     template<class T = void>
     struct shared_task;
+
+    struct task_cancelled {};
 }
 
 namespace co2 { namespace task_detail
@@ -26,12 +28,12 @@ namespace co2 { namespace task_detail
 
     struct promise_base
     {
-        suspend_never initial_suspend()
+        bool initial_suspend() noexcept
         {
-            return {};
+            return false;
         }
 
-        bool cancellation_requested() const
+        bool cancellation_requested() const noexcept
         {
             return false;
         }
@@ -54,9 +56,9 @@ namespace co2 { namespace task_detail
             Base::_tag.store(tag::value, std::memory_order_release);
         }
 
-        void set_exception(std::exception_ptr const& e)
+        void set_exception(std::exception_ptr e) noexcept
         {
-            new(&_data.exception) std::exception_ptr(e);
+            new(&_data.exception) std::exception_ptr(std::move(e));
             Base::_tag.store(tag::exception, std::memory_order_release);
         }
 
@@ -87,14 +89,14 @@ namespace co2 { namespace task_detail
     template<class Base>
     struct promise_data<void, Base> : Base
     {
-        void set_result()
+        void set_result() noexcept
         {
             Base::_tag.store(tag::value, std::memory_order_release);
         }
 
-        void set_exception(std::exception_ptr const& e)
+        void set_exception(std::exception_ptr e) noexcept
         {
-            _e = e;
+            _e = std::move(e);
             Base::_tag.store(tag::exception, std::memory_order_release);
         }
 
@@ -106,55 +108,96 @@ namespace co2 { namespace task_detail
 
         std::exception_ptr _e;
     };
+
+    template<class Derived, class Promise>
+    struct impl;
     
-    template<class Derived, class T, class Promise>
-    struct impl
+    template<template<class> class Task, class T, class Promise>
+    struct impl<Task<T>, Promise>
     {
         struct promise_type : promise_data<T, Promise>
         {
-            Derived get_return_object()
+            Task<T> get_return_object(coroutine<promise_type>&)
             {
-                return Derived(*this);
+                return Task<T>(this);
+            }
+
+            void cancel() noexcept
+            {
+                this->set_exception(std::make_exception_ptr(task_cancelled{}));
+            }
+
+            bool final_suspend() noexcept
+            {
+                this->finalize();
+                return !this->test_last();
             }
         };
 
-        impl() = default;
+        impl() noexcept : _promise() {}
 
-        explicit impl(promise_type& p) noexcept : _coro(&p) {}
+        impl(impl&& other) noexcept : _promise(other._promise)
+        {
+            other._promise = nullptr;
+        }
+
+        impl& operator=(impl other) noexcept
+        {
+            this->~impl();
+            return *new(this) impl(std::move(other));
+        }
+
+        explicit impl(promise_type* promise) noexcept : _promise(promise) {}
+
+        ~impl()
+        {
+            if (_promise)
+                release();
+        }
 
         explicit operator bool() const noexcept
         {
-            return static_cast<bool>(_coro);
+            return static_cast<bool>(_promise);
         }
 
         bool valid() const noexcept
         {
-            return static_cast<bool>(_coro);
+            return static_cast<bool>(_promise);
         }
 
-        void swap(Derived& other) noexcept
+        void swap(Task<T>& other) noexcept
         {
-            _coro.swap(other._coro);
+            std::swap(_promise, other._promise);
         }
 
         void reset() noexcept
         {
-            _coro.reset();
+            if (_promise)
+            {
+                release();
+                _promise = nullptr;
+            }
         }
 
         bool await_ready() const noexcept
         {
-            return _coro.promise()._tag.load(std::memory_order_relaxed) != tag::null;
+            return _promise->_tag.load(std::memory_order_relaxed) != tag::null;
         }
 
-        bool await_suspend(coroutine<> const& cb)
+        bool await_suspend(coroutine<>& cb)
         {
-            return _coro.promise().follow(cb);
+            return _promise->follow(cb);
         }
 
     protected:
 
-        coroutine<promise_type> _coro;
+        void release()
+        {
+            if (_promise->test_last())
+                coroutine<promise_type>::destroy(_promise);
+        }
+
+        promise_type* _promise;
     };
 
     template<class T>

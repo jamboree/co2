@@ -16,6 +16,7 @@ namespace co2 { namespace task_detail
 {
     struct shared_promise_base : promise_base
     {
+        std::atomic<unsigned> _use_count {2u};
         std::atomic<unsigned> _lock {0};
         std::atomic<tag> _tag {tag::null};
         std::vector<coroutine<>> _followers;
@@ -30,20 +31,22 @@ namespace co2 { namespace task_detail
             }
         };
 
+        bool test_last() noexcept
+        {
+            return _use_count.fetch_sub(1u, std::memory_order_relaxed) == 1u;
+        }
+
         void finalize() noexcept
         {
             while (_lock.exchange(2u, std::memory_order_acquire));
             unlocker _{_lock};
             for (auto& f : _followers)
-            {
                 f();
-                f.reset();
-            }
             _followers.clear();
             _followers.shrink_to_fit();
         }
 
-        bool follow(coroutine<> const& cb)
+        bool follow(coroutine<>& cb)
         {
             unsigned flag;
             do
@@ -53,7 +56,7 @@ namespace co2 { namespace task_detail
                     return false;
             } while (flag);
             unlocker _{_lock};
-            _followers.push_back(cb);
+            _followers.push_back(std::move(cb));
             return true;
         }
     };
@@ -66,22 +69,36 @@ namespace co2
 {
     template<class T>
     struct shared_task
-      : task_detail::impl<shared_task<T>, T, task_detail::shared_promise_base>
+      : task_detail::impl<shared_task<T>, task_detail::shared_promise_base>
     {
-        using base_type = task_detail::impl<shared_task<T>, T,
+        using base_type = task_detail::impl<shared_task<T>,
             task_detail::shared_promise_base>;
 
         using base_type::base_type;
 
         shared_task() = default;
 
+        shared_task(shared_task&&) = default;
+
+        shared_task(shared_task const& other) noexcept : base_type(other._promise)
+        {
+            if (auto promise = this->_promise)
+                promise->_use_count.fetch_add(1u, std::memory_order_relaxed);
+        }
+
         shared_task(task<T>&& other)
           : base_type(task_detail::share(std::move(other)))
         {}
 
+        shared_task& operator=(shared_task other) noexcept
+        {
+            this->~shared_task();
+            return *new(this) shared_task(std::move(other));
+        }
+
         task_detail::cref_t<T> await_resume()
         {
-            return this->_coro.promise().get();
+            return this->_promise->get();
         }
     };
 

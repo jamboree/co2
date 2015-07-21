@@ -13,10 +13,40 @@
 
 namespace co2 { namespace task_detail
 {
+    struct atomic_coroutine_handle
+    {
+        atomic_coroutine_handle() : _p{nullptr} {}
+
+        atomic_coroutine_handle(atomic_coroutine_handle&&) = delete;
+
+        coroutine<> steal(coroutine<>& coro)
+        {
+            return coroutine<>(_p.exchange(coro.detach(), std::memory_order_relaxed));
+        }
+
+        coroutine<> exchange_null()
+        {
+            return coroutine<>(_p.exchange(nullptr, std::memory_order_relaxed));
+        }
+
+        ~atomic_coroutine_handle()
+        {
+            coroutine<>(_p.load(std::memory_order_relaxed));
+        }
+
+        std::atomic<coroutine<>::handle_type> _p;
+    };
+
     struct unique_promise_base : promise_base
     {
         atomic_coroutine_handle _then;
         std::atomic<tag> _tag {tag::null};
+        std::atomic_flag _last_owner = ATOMIC_FLAG_INIT;
+
+        bool test_last() noexcept
+        {
+            return _last_owner.test_and_set(std::memory_order_relaxed);
+        }
 
         void finalize() noexcept
         {
@@ -24,22 +54,12 @@ namespace co2 { namespace task_detail
                 then();
         }
 
-        bool follow(coroutine<> const& cb)
+        bool follow(coroutine<>& cb)
         {
-            auto old = _then.exchange(cb);
+            auto old = _then.steal(cb);
             BOOST_ASSERT_MSG(!old, "multiple coroutines await on same task");
             return _tag.load(std::memory_order_relaxed) == tag::null
-                || !_then.exchange_null();
-        }
-    };
-
-    struct reset_after_resumed
-    {
-        coroutine<>& coro;
-
-        ~reset_after_resumed()
-        {
-            coro.reset();
+                || !(cb = _then.exchange_null());
         }
     };
 }}
@@ -48,10 +68,10 @@ namespace co2
 {
     template<class T>
     struct task
-      : task_detail::impl<task<T>, T, task_detail::unique_promise_base>
+      : task_detail::impl<task<T>, task_detail::unique_promise_base>
     {
         using base_type =
-            task_detail::impl<task<T>, T, task_detail::unique_promise_base>;
+            task_detail::impl<task<T>, task_detail::unique_promise_base>;
 
         using base_type::base_type;
 
@@ -63,8 +83,10 @@ namespace co2
 
         T await_resume()
         {
-            task_detail::reset_after_resumed _{this->_coro};
-            return this->_coro.promise().get();
+            T ret(this->_promise->get());
+            this->release();
+            this->_promise = nullptr;
+            return ret;
         }
 
         shared_task<T> share()

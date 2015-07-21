@@ -9,7 +9,6 @@
 
 #include <new>
 #include <memory>
-#include <atomic>
 #include <utility>
 #include <exception>
 #include <boost/config.hpp>
@@ -56,16 +55,13 @@ namespace co2 { namespace detail
 {
     namespace temp
     {
-        template<std::size_t Bytes, std::size_t RefSize = sizeof(void*)>
+        template<std::size_t Bytes, std::size_t RefSize = 1>
         using adjust_size = std::integral_constant<std::size_t, (Bytes > RefSize ? Bytes : RefSize)>;
 
         struct default_size
         {
-            using _co2_sz = std::integral_constant<std::size_t, sizeof(void*) * 4>;
+            using _co2_sz = std::integral_constant<std::size_t, (sizeof(void*) + sizeof(int)) * 2>;
         };
-
-        template<std::size_t Bytes>
-        using storage = std::aligned_storage_t<Bytes, alignof(std::max_align_t)>;
 
         template<class T, bool NeedsAlloc>
         struct traits_non_ref
@@ -202,13 +198,17 @@ namespace co2 { namespace detail
     template<class Promise, class F, class Alloc>
     struct frame final
       : resumable<Promise>
-      , rebind_alloc_t<Alloc, frame<Promise, F, Alloc>>
     {
         using alloc_t = rebind_alloc_t<Alloc, frame<Promise, F, Alloc>>;
         using traits = std::allocator_traits<alloc_t>;
 
-        temp::storage<F::_co2_sz::value> _tmp;
-        storage_for<F> _f;
+        struct memory : alloc_t
+        {
+            explicit memory(alloc_t&& alloc) : alloc_t(std::move(alloc)) {}
+
+            alignas(std::max_align_t) char tmp[F::_co2_sz::value];
+            storage_for<F> f;
+        } _mem;
 
         template<class Pack>
         static frame* create(alloc_t alloc, Pack&& pack)
@@ -226,21 +226,21 @@ namespace co2 { namespace detail
         }
 
         template<class Pack>
-        frame(alloc_t alloc, Pack&& pack) : alloc_t(std::move(alloc))
+        frame(alloc_t alloc, Pack&& pack) : _mem(std::move(alloc))
         {
-            new(&_f) F(std::forward<Pack>(pack));
+            new(&_mem.f) F(std::forward<Pack>(pack));
             this->_next = F::_co2_start::value;
         }
 
         void run(coroutine<>& coro) override
         {
-            reinterpret_cast<F&>(_f)
-            (static_cast<coroutine<Promise>&>(coro), this->_next, this->_eh, &_tmp);
+            reinterpret_cast<F&>(_mem.f)
+            (static_cast<coroutine<Promise>&>(coro), this->_next, this->_eh, &_mem.tmp);
         }
 
         void release() noexcept override
         {
-            alloc_t alloc(static_cast<alloc_t&&>(*this));
+            alloc_t alloc(static_cast<alloc_t&&>(_mem));
             this->~frame();
             traits::deallocate(alloc, this, 1);
         }
@@ -517,11 +517,6 @@ namespace co2
 
         void set_result() noexcept {}
 
-        void set_exception(std::exception_ptr const&) noexcept
-        {
-            std::terminate();
-        }
-
         void cancel() noexcept {}
     };
 
@@ -536,30 +531,6 @@ namespace co2
     {
         return lhs.to_address() != rhs.to_address();
     }
-
-    struct atomic_coroutine_handle
-    {
-        atomic_coroutine_handle() : _p{nullptr} {}
-
-        atomic_coroutine_handle(atomic_coroutine_handle&&) = delete;
-
-        coroutine<> exchange(coroutine<> coro)
-        {
-            return coroutine<>(_p.exchange(coro.detach(), std::memory_order_relaxed));
-        }
-
-        coroutine<> exchange_null()
-        {
-            return coroutine<>(_p.exchange(nullptr, std::memory_order_relaxed));
-        }
-
-        ~atomic_coroutine_handle()
-        {
-            coroutine<>(_p.load(std::memory_order_relaxed));
-        }
-
-        std::atomic<coroutine<>::handle_type> _p;
-    };
 
     namespace detail
     {

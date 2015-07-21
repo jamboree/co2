@@ -20,27 +20,30 @@ namespace co2
         {
             using val_t = detail::wrap_reference_t<T>;
 
-            generator get_return_object()
+            generator get_return_object(coroutine<promise_type>& coro)
             {
-                return generator(this);
+                return generator(std::move(coro));
             }
 
-            suspend_always initial_suspend()
+            bool initial_suspend() noexcept
             {
-                return {};
+                return true;
             }
 
-            void finalize() noexcept {}
+            bool final_suspend() noexcept
+            {
+                reset_value();
+                return false;
+            }
 
-            bool cancellation_requested() const
+            bool cancellation_requested() const noexcept
             {
                 return false;
             }
 
-            void set_result()
-            {
-                reset_value();
-            }
+            void set_result() noexcept {}
+
+            void cancel() noexcept {}
 
             suspend_always yield_value(T&& t)
             {
@@ -76,10 +79,10 @@ namespace co2
         struct iterator
           : boost::iterator_facade<iterator, T, std::input_iterator_tag, T&&>
         {
-            iterator() = default;
+            iterator() : _coro() {}
 
-            explicit iterator(coroutine<promise_type> const& coro)
-              : _coro(coro)
+            explicit iterator(coroutine<promise_type>& coro)
+              : _coro(&coro)
             {
                 increment();
             }
@@ -90,9 +93,9 @@ namespace co2
 
             void increment()
             {
-                _coro.resume();
-                if (_coro.done())
-                    _coro.reset();
+                _coro->resume();
+                if (!*_coro)
+                    _coro = nullptr;
             }
 
             bool equal(iterator const& other) const
@@ -102,10 +105,10 @@ namespace co2
 
             T&& dereference() const
             {
-                return _coro.promise().get();
+                return _coro->promise().get();
             }
 
-            coroutine<promise_type> _coro;
+            coroutine<promise_type>* _coro;
         };
 
         generator() = default;
@@ -121,7 +124,7 @@ namespace co2
 
         iterator begin()
         {
-            if (!_coro || _coro.done())
+            if (!_coro)
                 return {};
             return iterator(_coro);
         }
@@ -133,7 +136,7 @@ namespace co2
 
     private:
 
-        explicit generator(promise_type* p) : _coro(p) {}
+        explicit generator(coroutine<promise_type>& coro) : _coro(std::move(coro)) {}
 
         coroutine<promise_type> _coro;
     };
