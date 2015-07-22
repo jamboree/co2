@@ -20,9 +20,9 @@ namespace boost
     }
 
     template<class T>
-    inline void await_suspend(future<T>& fut, ::co2::coroutine<> const& cb)
+    inline void await_suspend(future<T>& fut, ::co2::coroutine<>& cb)
     {
-        thread([&fut, cb]
+        thread([&fut, cb=std::move(cb)] mutable
         {
             fut.wait();
             cb();
@@ -45,17 +45,20 @@ namespace co2 { namespace boost_future_detail
     {
         promise<T> promise;
 
-        future<T> get_return_object()
+        future<T> get_return_object(coroutine<>&)
         {
             return promise.get_future();
         }
 
-        suspend_never initial_suspend()
+        bool initial_suspend() noexcept
         {
-            return {};
+            return false;
         }
 
-        void finalize() noexcept {}
+        bool final_suspend() noexcept
+        {
+            return false;
+        }
 
         bool cancellation_requested() const
         {

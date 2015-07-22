@@ -43,8 +43,6 @@ namespace co2
 
             void set_result() noexcept {}
 
-            void cancel() noexcept {}
-
             suspend_always yield_value(T&& t)
             {
                 return yield_value<T>(std::forward<T>(t));

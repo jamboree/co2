@@ -308,6 +308,14 @@ namespace co2 { namespace detail
         };
     }
 
+    template<class Promise>
+    inline auto cancel(Promise* p) -> decltype(p->cancel())
+    {
+        return p->cancel();
+    }
+
+    inline void cancel(void*) {}
+
     template<class... T>
     inline std::allocator<void> get_alloc(T&&...)
     {
@@ -516,8 +524,6 @@ namespace co2
         }
 
         void set_result() noexcept {}
-
-        void cancel() noexcept {}
     };
 
     template<class Promise>
@@ -622,7 +628,7 @@ namespace co2
     {                                                                           \
         case __COUNTER__:                                                       \
         _co2_await::reset(_co2_tmp);                                            \
-        _co2_promise.cancel();                                                  \
+        ::co2::detail::cancel(&_co2_promise);                                   \
         goto _co2_finalize;                                                     \
     }                                                                           \
     ::co2::detail::temp::auto_reset<_co2_expr_t, _co2_sz::value>                \
@@ -642,7 +648,7 @@ namespace co2
     if (_co2_promise.cancellation_requested())                                  \
     {                                                                           \
         case __COUNTER__:                                                       \
-        _co2_promise.cancel();                                                  \
+        ::co2::detail::cancel(&_co2_promise);                                   \
         goto _co2_finalize;                                                     \
     }                                                                           \
 }                                                                               \

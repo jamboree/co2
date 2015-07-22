@@ -17,21 +17,26 @@ namespace co2 { namespace boost_optional_detail
     template<class T>
     struct promise
     {
-        suspend_never initial_suspend()
+        bool initial_suspend() noexcept
         {
-            return{};
+            return false;
         }
 
-        void finalize() noexcept {}
-
-        bool cancellation_requested() const
+        bool final_suspend() noexcept
         {
-            return _cancelled;
+            return true;
         }
 
-        optional<T> get_return_object()
+        bool cancellation_requested() const noexcept
         {
-            return std::move(_ret);
+            return false;
+        }
+
+        optional<T> get_return_object(coroutine<promise>&)
+        {
+            optional<T> ret(std::move(_ret));
+            coroutine<promise>::destroy(this);
+            return ret;
         }
 
         template<class T>
@@ -40,15 +45,9 @@ namespace co2 { namespace boost_optional_detail
             _ret = std::forward<T>(val);
         }
 
-        void cancel()
-        {
-            _cancelled = true;
-        }
-
     private:
 
         optional<T> _ret;
-        bool _cancelled = false;
     };
 }}
 
@@ -70,10 +69,8 @@ namespace boost
     }
 
     template<class T>
-    inline bool await_suspend(optional<T> const& opt, co2::coroutine<co2::boost_optional_detail::promise<T>> const& cb)
+    inline void await_suspend(optional<T> const& opt, co2::coroutine<> const&)
     {
-        cb.promise().cancel();
-        return false;
     }
 
     template<class T>
