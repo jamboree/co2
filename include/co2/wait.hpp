@@ -16,34 +16,9 @@
 
 namespace co2 { namespace wait_detail
 {
-    struct result
-    {
-        struct promise_type
-        {
-            suspend_never initial_suspend()
-            {
-                return{};
-            }
-
-            void finalize() noexcept {}
-
-            bool cancellation_requested() const
-            {
-                return false;
-            }
-
-            result get_return_object()
-            {
-                return {};
-            }
-
-            void set_result() {}
-        };
-    };
-
     template<class Awaitable>
     auto run(Awaitable& a, std::mutex& mtx, std::condition_variable& cond, bool& not_ready)
-    CO2_RET(result, (a, mtx, cond, not_ready), CO2_RESERVE(sizeof(void*));)
+    CO2_RET(coroutine<>, (a, mtx, cond, not_ready), CO2_RESERVE(sizeof(void*));)
     {
         CO2_AWAIT(awaken(a));
         {

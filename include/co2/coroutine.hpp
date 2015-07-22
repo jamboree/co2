@@ -545,7 +545,7 @@ namespace co2
             }
 
             template<class F>
-            auto await_suspend(F&& f) const
+            auto await_suspend(F&& f) const -> decltype(co2::await_suspend(task, std::forward<F>(f)))
             {
                 return co2::await_suspend(task, std::forward<F>(f));
             }
