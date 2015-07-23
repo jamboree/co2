@@ -45,7 +45,7 @@ namespace co2 { namespace boost_future_detail
     {
         promise<T> promise;
 
-        future<T> get_return_object(coroutine<promise>& coro)
+        future<T> get_return_object(coroutine<>& coro)
         {
             auto ret(promise.get_future());
             coro();
