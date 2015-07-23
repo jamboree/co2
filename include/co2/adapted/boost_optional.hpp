@@ -32,9 +32,10 @@ namespace co2 { namespace boost_optional_detail
             return false;
         }
 
-        optional<T> get_return_object(coroutine<promise>&)
+        optional<T> get_return_object(coroutine<promise>& coro)
         {
-            optional<T> ret(std::move(_ret));
+            coro.resume();
+            auto ret(std::move(_ret));
             coroutine<promise>::destroy(this);
             return ret;
         }
@@ -69,8 +70,9 @@ namespace boost
     }
 
     template<class T>
-    inline void await_suspend(optional<T> const& opt, co2::coroutine<> const&)
+    inline void await_suspend(optional<T> const& opt, co2::coroutine<>& coro)
     {
+        coro.reset();
     }
 
     template<class T>

@@ -520,6 +520,7 @@ namespace co2
 
         coroutine<promise_type> get_return_object(coroutine<promise_type>& coro)
         {
+            coro.resume();
             return std::move(coro);
         }
 
@@ -817,9 +818,7 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)                     
     auto _co2_a(_co2_k._co2_alloc_from_params());                               \
     using _co2_FR = ::co2::detail::frame<_co2_P, _co2_F, decltype(_co2_a)>;     \
     _co2_C _co2_c(_co2_FR::create(std::move(_co2_a), std::move(_co2_k)));       \
-    auto& promise = _co2_c.promise();                                           \
-    _co2_c.resume();                                                            \
-    return promise.get_return_object(_co2_c);                                   \
+    return _co2_c.promise().get_return_object(_co2_c);                          \
 }                                                                               \
 /***/
 
@@ -828,8 +827,7 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)                     
     using _co2_FR = ::co2::detail::frame<_co2_P, _co2_F, decltype(a)>;          \
     _co2_C _co2_c(_co2_FR::create(a, std::move(_co2_k)));                       \
     auto& promise = _co2_c.promise();                                           \
-    _co2_c.resume();                                                            \
-    return promise.get_return_object(_co2_c);                                   \
+    return _co2_c.promise().get_return_object(_co2_c);                          \
 }                                                                               \
 /***/
 

@@ -8,7 +8,7 @@
 #define CO2_ADAPTED_BOOST_FUTURE_HPP_INCLUDED
 
 #include <co2/coroutine.hpp>
-#include <boost/thread.hpp>
+#include <boost/thread/thread.hpp>
 #include <boost/thread/future.hpp>
 
 namespace boost
@@ -45,9 +45,11 @@ namespace co2 { namespace boost_future_detail
     {
         promise<T> promise;
 
-        future<T> get_return_object(coroutine<>&)
+        future<T> get_return_object(coroutine<promise>& coro)
         {
-            return promise.get_future();
+            auto ret(promise.get_future());
+            coro();
+            return ret;
         }
 
         bool initial_suspend() noexcept

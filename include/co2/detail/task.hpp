@@ -117,8 +117,9 @@ namespace co2 { namespace task_detail
     {
         struct promise_type : promise_data<T, Promise>
         {
-            Task<T> get_return_object(coroutine<promise_type>&)
+            Task<T> get_return_object(coroutine<promise_type>& coro)
             {
+                coro();
                 return Task<T>(this);
             }
 
