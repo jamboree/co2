@@ -752,16 +752,20 @@ BOOST_PP_IF(_impl_CO2_IS_EMPTY t, _impl_CO2_TUPLE_FOR_EACH_EMPTY,               
     _impl_CO2_FWD_PARAM, capture) ::co2::detail::void_{})                       \
 /***/
 
+#define _impl_CO2_INVOKE(f, args) f args
 #define _impl_CO2_DISPATCH_impl_CO2_GET_ALLOC_ (_impl_CO2_OLD_ALLOC, void)
-#define _impl_CO2_DISPATCH_EMPTY
-#define _impl_CO2_GET_ALLOC_new(a) _EMPTY (_impl_CO2_NEW_ALLOC, a)
+#define _impl_CO2_DISPATCH_NEW_ALLOC
+#define _impl_CO2_GET_ALLOC_new(a) _NEW_ALLOC (_impl_CO2_NEW_ALLOC, a)
 #define _impl_CO2_SKIP_CAPTURE(...) 
-#define _impl_CO2_GET_CAPTURE(x) _impl_CO2_STRIP_ALLOC(_impl_CO2_SEPARATE_ALLOC x)
-#define _impl_CO2_SEPARATE_ALLOC(...) (__VA_ARGS__),
-#define _impl_CO2_STRIP_ALLOC(x) _impl_CO2_1ST(x)
-#define _impl_CO2_GET_ALLOC(x) BOOST_PP_CAT(_impl_CO2_DISPATCH,                 \
-    BOOST_PP_CAT(_impl_CO2_GET_ALLOC_, _impl_CO2_SKIP_CAPTURE x))               \
+#define _impl_CO2_GET_ALLOC(x) BOOST_PP_EXPAND(_impl_CO2_INVOKE(                \
+    BOOST_PP_CAT, (_impl_CO2_DISPATCH, _impl_CO2_INVOKE(                        \
+        BOOST_PP_CAT, (_impl_CO2_GET_ALLOC_, _impl_CO2_SKIP_CAPTURE x)))))      \
 /***/
+
+#define _impl_CO2_STRIP_ALLOC(x) _impl_CO2_1ST(x)
+#define _impl_CO2_SEPARATE_ALLOC(...) (__VA_ARGS__),
+#define _impl_CO2_GET_CAPTURE(x) _impl_CO2_STRIP_ALLOC(_impl_CO2_SEPARATE_ALLOC x)
+
 
 #define CO2_RESERVE(bytes) using _co2_sz = ::co2::detail::temp::adjust_size<bytes>
 
@@ -778,7 +782,7 @@ BOOST_PP_IF(_impl_CO2_IS_EMPTY t, _impl_CO2_TUPLE_FOR_EACH_EMPTY,               
     auto _co2_a(_impl_CO2_1ST alloc(_impl_CO2_2ND alloc, capture));             \
     struct _co2_F : ::co2::detail::temp::default_size, _co2_K                   \
     {                                                                           \
-        _impl_CO2_TUPLE_FOR_EACH(_impl_CO2_USE_PARAM, _impl_CO2_1ST(capture)) \
+        _impl_CO2_TUPLE_FOR_EACH(_impl_CO2_USE_PARAM, _impl_CO2_1ST(capture))   \
         __VA_ARGS__                                                             \
         _co2_F(_co2_K&& pack) : _co2_K(std::move(pack)) {}                      \
         using _co2_start = std::integral_constant<unsigned, __COUNTER__>;       \
