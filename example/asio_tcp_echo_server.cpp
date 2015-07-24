@@ -8,7 +8,7 @@
 
 namespace asio = boost::asio;
 
-auto session(asio::ip::tcp::socket sock) CO2_RET(co2::task<>, (sock),
+auto session(asio::ip::tcp::socket sock) CO2_BEG(co2::task<>, (sock),
     char buf[1024];
     std::size_t len;
     act::error_code ec;
@@ -31,7 +31,7 @@ auto session(asio::ip::tcp::socket sock) CO2_RET(co2::task<>, (sock),
     }
 } CO2_END
 
-auto server(asio::io_service& io, unsigned port) CO2_RET(co2::task<>, (io, port),
+auto server(asio::io_service& io, unsigned port) CO2_BEG(co2::task<>, (io, port),
     asio::ip::tcp::endpoint endpoint{asio::ip::tcp::v4(), port};
     asio::ip::tcp::acceptor acceptor{io, endpoint};
 )

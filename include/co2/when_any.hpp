@@ -62,7 +62,7 @@ namespace co2 { namespace detail
         }
 
         template<std::size_t N, class U>
-        static auto any_then(when_any_context& ctx, U& u, coroutine<> then) CO2_RET(coroutine<>, (ctx, u, then))
+        static auto any_then(when_any_context& ctx, U& u, coroutine<> then) CO2_BEG(coroutine<>, (ctx, u, then))
         {
             CO2_AWAIT(suspend_always{});
             if (!ctx.done.test_and_set(std::memory_order_relaxed))
@@ -119,7 +119,7 @@ namespace co2
 {
     template<class... T>
     inline auto when_any(std::tuple<T...> t)
-    CO2_RET(task<typename detail::when_any_context<T...>::result_t>, (t),
+    CO2_BEG(task<typename detail::when_any_context<T...>::result_t>, (t),
         detail::when_any_context<T...> ctx;
     )
     {

@@ -114,7 +114,7 @@ namespace co2 { namespace detail
                 return **static_cast<T**>(p);
             }
 
-            static void reset(void* p) {}
+            static void reset(void*) {}
         };
 
         template<class T, std::size_t Bytes>
@@ -484,10 +484,7 @@ namespace co2
         explicit coroutine(Promise* p) noexcept
         {
             if (p)
-            {
                 _ptr = detail::resumable<Promise>::from_promise(p);
-                _ptr->_use_count.fetch_add(1u, std::memory_order_relaxed);
-            }
         }
 
         Promise& promise() const noexcept
@@ -742,30 +739,46 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)                     
 #define _impl_CO2_TUPLE_FOR_EACH_EMPTY(macro, t)
 
 #define _impl_CO2_TUPLE_FOR_EACH(macro, t)                                      \
-    BOOST_PP_IF(_impl_CO2_IS_EMPTY t, _impl_CO2_TUPLE_FOR_EACH_EMPTY,           \
-        _impl_CO2_TUPLE_FOR_EACH_IMPL)(macro, t)                                \
+BOOST_PP_IF(_impl_CO2_IS_EMPTY t, _impl_CO2_TUPLE_FOR_EACH_EMPTY,               \
+    _impl_CO2_TUPLE_FOR_EACH_IMPL)(macro, t)                                    \
+/***/
+
+#define _impl_CO2_1ST(a, ...) a
+#define _impl_CO2_2ND(a, b) b
+
+#define _impl_CO2_NEW_ALLOC(alloc, capture, ...) std::forward<decltype(alloc)>(alloc)
+#define _impl_CO2_OLD_ALLOC(alloc, capture, ...)                                \
+::co2::detail::get_alloc(_impl_CO2_TUPLE_FOR_EACH(                              \
+    _impl_CO2_FWD_PARAM, capture) ::co2::detail::void_{})                       \
+/***/
+
+#define _impl_CO2_DISPATCH_impl_CO2_GET_ALLOC_ (_impl_CO2_OLD_ALLOC, void)
+#define _impl_CO2_DISPATCH_EMPTY
+#define _impl_CO2_GET_ALLOC_new(a) _EMPTY (_impl_CO2_NEW_ALLOC, a)
+#define _impl_CO2_SKIP_CAPTURE(...) 
+#define _impl_CO2_GET_CAPTURE(x) _impl_CO2_STRIP_ALLOC(_impl_CO2_SEPARATE_ALLOC x)
+#define _impl_CO2_SEPARATE_ALLOC(...) (__VA_ARGS__),
+#define _impl_CO2_STRIP_ALLOC(x) _impl_CO2_1ST(x)
+#define _impl_CO2_GET_ALLOC(x) BOOST_PP_CAT(_impl_CO2_DISPATCH,                 \
+    BOOST_PP_CAT(_impl_CO2_GET_ALLOC_, _impl_CO2_SKIP_CAPTURE x))               \
 /***/
 
 #define CO2_RESERVE(bytes) using _co2_sz = ::co2::detail::temp::adjust_size<bytes>
 
-#define CO2_BEGIN(R, capture, ...)                                              \
+#define _impl_CO2_HEAD(R, capture, alloc, ...)                                  \
 {                                                                               \
     using _co2_T = ::co2::coroutine_traits<R>;                                  \
     using _co2_P = ::co2::detail::promise_t<_co2_T>;                            \
     using _co2_C = ::co2::coroutine<_co2_P>;                                    \
     struct _co2_K                                                               \
     {                                                                           \
-        _impl_CO2_TUPLE_FOR_EACH(_impl_CO2_DECL_PARAM, capture)                 \
-        auto _co2_alloc_from_params()                                           \
-        {                                                                       \
-            return ::co2::detail::get_alloc(_impl_CO2_TUPLE_FOR_EACH(           \
-                _impl_CO2_FWD_PARAM, capture) ::co2::detail::void_{});          \
-        }                                                                       \
+        _impl_CO2_TUPLE_FOR_EACH(_impl_CO2_DECL_PARAM, _impl_CO2_1ST(capture))\
     };                                                                          \
-    _co2_K _co2_k = {_impl_CO2_TUPLE_FOR_EACH(_impl_CO2_FWD_PARAM, capture)};   \
+    _co2_K _co2_k = {_impl_CO2_TUPLE_FOR_EACH(_impl_CO2_FWD_PARAM, _impl_CO2_1ST(capture))};\
+    auto _co2_a(_impl_CO2_1ST alloc(_impl_CO2_2ND alloc, capture));             \
     struct _co2_F : ::co2::detail::temp::default_size, _co2_K                   \
     {                                                                           \
-        _impl_CO2_TUPLE_FOR_EACH(_impl_CO2_USE_PARAM, capture)                  \
+        _impl_CO2_TUPLE_FOR_EACH(_impl_CO2_USE_PARAM, _impl_CO2_1ST(capture)) \
         __VA_ARGS__                                                             \
         _co2_F(_co2_K&& pack) : _co2_K(std::move(pack)) {}                      \
         using _co2_start = std::integral_constant<unsigned, __COUNTER__>;       \
@@ -785,7 +798,11 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)                     
                     _impl_CO2_SUSPEND(initial_suspend(), __COUNTER__);          \
 /***/
 
-#define _impl_CO2_END_FRAME                                                     \
+#define CO2_BEG(R, capture, ...) -> R _impl_CO2_HEAD(R,                         \
+    _impl_CO2_GET_CAPTURE(capture), _impl_CO2_GET_ALLOC(capture), __VA_ARGS__)  \
+/***/
+
+#define CO2_END                                                                 \
                     _co2_next = ::co2::detail::sentinel::value;                 \
                     ::co2::detail::final_result(&_co2_promise);                 \
                 _co2_finalize:                                                  \
@@ -811,26 +828,10 @@ BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)                     
             return ::co2::detail::avoid_plain_return{};                         \
         }                                                                       \
     };                                                                          \
-/***/
-
-#define CO2_END                                                                 \
-    _impl_CO2_END_FRAME                                                         \
-    auto _co2_a(_co2_k._co2_alloc_from_params());                               \
     using _co2_FR = ::co2::detail::frame<_co2_P, _co2_F, decltype(_co2_a)>;     \
     _co2_C _co2_c(_co2_FR::create(std::move(_co2_a), std::move(_co2_k)));       \
     return _co2_c.promise().get_return_object(_co2_c);                          \
 }                                                                               \
 /***/
-
-#define CO2_END_ALLOC(a)                                                        \
-    _impl_CO2_END_FRAME                                                         \
-    using _co2_FR = ::co2::detail::frame<_co2_P, _co2_F, decltype(a)>;          \
-    _co2_C _co2_c(_co2_FR::create(a, std::move(_co2_k)));                       \
-    auto& promise = _co2_c.promise();                                           \
-    return _co2_c.promise().get_return_object(_co2_c);                          \
-}                                                                               \
-/***/
-
-#define CO2_RET(R, capture, ...) -> R CO2_BEGIN(R, capture, __VA_ARGS__)
 
 #endif

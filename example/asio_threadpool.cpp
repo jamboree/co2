@@ -35,7 +35,7 @@ auto post(boost::asio::io_service& io)
 
 std::thread::id tasks[1024];
 
-auto task(boost::asio::io_service& io, std::thread::id& id) CO2_RET(co2::task<>, (io, id))
+auto task(boost::asio::io_service& io, std::thread::id& id) CO2_BEG(co2::task<>, (io, id))
 {
     using namespace std::chrono_literals;
 

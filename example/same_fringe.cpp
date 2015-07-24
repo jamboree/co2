@@ -87,14 +87,14 @@ node::ptr_t create_right_tree_from(const std::string& root)
 // recursively walk the tree, delivering values in order
 template<class Alloc>
 auto traverse(Alloc alloc, node::ptr_t n)
-CO2_RET(co2::recursive_generator<std::string>, (alloc, n))
+CO2_BEG(co2::recursive_generator<std::string>, (alloc, n)new(alloc))
 {
     if (n->left)
         CO2_YIELD(traverse(alloc, n->left));
     CO2_YIELD(n->value);
     if (n->right)
         CO2_YIELD(traverse(alloc, n->right));
-} CO2_END_ALLOC(alloc)
+} CO2_END
 
 int main()
 {
