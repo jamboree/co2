@@ -18,57 +18,69 @@ Many of the concepts are similar to N4286, if you're not familiar with the propo
 
 A coroutine written in this library looks like below:
 ```c++
-return_type function(Args... args)
-CO2_BEGIN(return_type, (args...), locals...)
+auto function(Args... args) CO2_BEG(return_type, (args...), locals...)
 {
     <coroutine-body>
 } CO2_END
 ```
 
-Note this line
+`function` is really just a plain-old function, you can forward declare it as usual:
 ```c++
-return_type function(Args... args)
-```
-is just a plain-old function prototype, you can forward declare it as well.
-
-Ready for preprocessor magic? here we go...
-
-The coroutine body has to be surrounded with 2 macros: `CO2_BEGIN` and `CO2_END`, or their siblings which we'll see later.
-
-The macro `CO2_BEGIN` requires you to provide some parameters:
-* _return_type_ - same as the function's return-type
-* _args_ - captures section, a list of comma (`,`) separated identifiers
-* _locals_ - local variables section, a list of semi-colon (`;`) separated variables
-
-Both _args_ and _locals_ are optional, depends on your need, you can leave them empty, for example:
-```c++
-CO2_BEGIN(return_type, ())
+auto function(Args... args) -> return_type;
+return_type function(Args... args); // same as above
 ```
 
-You may find that repeating the return_type twice is annoying, as C++11 adds trailing return type syntax, the library also provide a convenient macro `CO2_RET`, which is particularly fit for lambda expressions:
+Of course, lambda expressions can be used as well:
 ```c++
-[]() CO2_RET(return_type, ()) {...} CO2_END
+[](Args... args) CO2_BEG(return_type, (args...), locals...)
+{
+    <coroutine-body>
+} CO2_END
 ```
 
-You can intialize the local variables in the local variables section, for example:
+The coroutine body has to be surrounded with 2 macros: `CO2_BEG` and `CO2_END`.
+
+The macro `CO2_BEG` requires you to provide some parameters:
+* _return-type_ - the function's return-type, e.g. `co2::task<>`
+* _captures_ - a list of comma separated args with an optional `new` clause, e.g. `(a, b) new(alloc)`
+* _locals_ - a list of local-variable definitions, e.g. `int a;`
+
+If there's no _args_ and _locals_, it looks like:
 ```c++
-auto f(int i) CO2_RET(return_type, (i),
+CO2_BEG(return_type, ())
+```
+
+You can intialize the local variables as below:
+```c++
+auto f(int i) CO2_BEG(return_type, (i),
     int i2 = i * 2;
+    std::string msg{"hello"};
 )
 {
     // coroutine-body
 } CO2_END
 ```
 
+However, the `()` form cannot be used, that is, `int i2(i * 2);` is not allowed here.
+
 Note that in this emulation, local variables intialization happens before `initial_suspend`, and if any exception is thrown during the intialization, `set_exception` won't be called, instead, the exception will propagate to the caller directly.
 
+By default, the library allocates memory for coroutines using `std::allocator`, you can specify the allocator by appending the `new` clause after the args-list, for example:
+
+```c++
+template<class Alloc>
+auto coro(Alloc alloc, int i) CO2_BEG(return_type, (i) new(alloc))
+```
+
+The `alloc` doesn't have to appear in the args-list if it's not used inside the coroutine-body.
+
 Inside the coroutine body, there are some restrictions:
-* local variables with automatic storage are not allowed - you should specify them in local variables section of `CO2_BEGIN` as described above
+* local variables with automatic storage cannot cross suspend-resume points - you should specify them in local variables section of `CO2_BEG` as described above
 * `return` should be replaced with `CO2_RETURN`/`CO2_RETURN_FROM`
-* try-catch block surrouding `await` statements should be replaced with `CO2_TRY` & `CO2_CATCH`
+* try-catch block surrouding suspend-resume points should be replaced with `CO2_TRY` & `CO2_CATCH`
 * identifiers starting with `_co2_` are reserved for this library
 
-After defining the coroutine body, remember to close it with `CO2_END` or `CO2_END_ALLOC`, the latter allows you to specify an allocator from the parameters.
+After defining the coroutine body, remember to close it with `CO2_END`.
 
 ### await & yield
 
@@ -110,10 +122,10 @@ The fact that `await` in _CO2_ is not an expression has an implication on object
 
 It's safe if `await` is an expression as in N4286, but in _CO2_, `CO2_AWAIT(something{temporaries})` is an emulated statement, the `temporaries` will go out of scope.
 
-Besides, the awaiter itself has to be stored somewhere, _CO2_ internally reserves `sizeof(pointer) * 4` bytes for that as default, if the size of awaiter is larger than that, free store will be used.
+Besides, the awaiter itself has to be stored somewhere, by default, _CO2_ reserves `(sizeof(pointer) + sizeof(int)) * 2` bytes for that, if the size of awaiter is larger than that, free store will be used.
 If the default size is too large or too small for you, you can specify the desired size with `CO2_RESERVE` anywhere in the local variables section:
 ```c++
-auto f() CO2_RET(return_type, (),
+auto f() CO2_BEG(return_type, (),
     CO2_RESERVE(bytes);
 )
 {
@@ -167,18 +179,14 @@ Note that `break` is still needed if you don't want the control flow to go throu
 
 ## Difference from N4286
 
-* Unlike `coroutine_handle` in N4286, `coroutine` is ref-counted.
+* Unlike `coroutine_handle` in N4286 which has raw-pointer semantic (i.e. no RAII), `coroutine` has unique-semantic (move-only).
 * `coroutine_traits` depends on return_type only.
-* `final_suspend` is replaced with `finalize` in promise requirements, always returns `void`.
 
-### Additional customization points
+### Additional customization points for promise_type
 
-In addition to the promise requirements defined by N4286, _CO2_ defines an optional pair of customization points:
-1. `bool before_resume()`
-2. `void after_suspend()`
+* `void cancel()`
 
-`before_resume` is called for checking if the coroutine can be resumed, and `after_suspend` is called after `await_suspend` succeed on the awaiter.
-Combined with `cancellation_requested`, they allow you to actively cancel the coroutine instead of passively waiting for the awaiter to resume-and-cancel.
+This allows you specify the behavior of the coroutine when it is cancelled (i.e. when `cancellation_requested()` returns true or coroutine is reset).
 
 ## Reference
 
@@ -194,10 +202,8 @@ __Headers__
 * `#include <co2/utility/stack_allocator.hpp>`
 
 __Macros__
-* `CO2_BEGIN`
-* `CO2_RET`
+* `CO2_BEG`
 * `CO2_END`
-* `CO2_END_ALLOC`
 * `CO2_AWAIT`
 * `CO2_AWAIT_SET`
 * `CO2_AWAIT_LET`
@@ -230,7 +236,7 @@ __Classes__
 
 __Define a generator__
 ```c++
-auto range(int i, int e) CO2_RET(co2::generator<int>, (i, e))
+auto range(int i, int e) CO2_BEG(co2::generator<int>, (i, e))
 {
     for ( ; i != e; ++i)
         CO2_YIELD(i);
@@ -251,7 +257,7 @@ Same example as above, using `recursive_generator` with custom allocator:
 ```c++
 template<class Alloc>
 auto recursive_range(Alloc alloc, int a, int b)
-CO2_RET(co2::recursive_generator<int>, (alloc, a, b),
+CO2_BEG(co2::recursive_generator<int>, (alloc, a, b) new(alloc),
     int n = b - a;
 )
 {
@@ -267,7 +273,7 @@ CO2_RET(co2::recursive_generator<int>, (alloc, a, b),
     n = a + n / 2;
     CO2_YIELD(recursive_range(alloc, a, n));
     CO2_YIELD(recursive_range(alloc, n, b));
-} CO2_END_ALLOC(alloc)
+} CO2_END
 ```
 We use `stack_allocator` here:
 ```c++
@@ -284,7 +290,7 @@ for (auto i : recursive_range(alloc, 1, 10))
 This example uses the sister library [act](https://github.com/jamboree/act) to change ASIO style callback into await.
 
 ```c++
-auto session(asio::ip::tcp::socket sock) CO2_RET(co2::task<>, (sock),
+auto session(asio::ip::tcp::socket sock) CO2_BEG(co2::task<>, (sock),
     char buf[1024];
     std::size_t len;
     act::error_code ec;
@@ -307,7 +313,7 @@ auto session(asio::ip::tcp::socket sock) CO2_RET(co2::task<>, (sock),
     }
 } CO2_END
 
-auto server(asio::io_service& io, unsigned port) CO2_RET(co2::task<>, (io, port),
+auto server(asio::io_service& io, unsigned port) CO2_BEG(co2::task<>, (io, port),
     asio::ip::tcp::endpoint endpoint{asio::ip::tcp::v4(), port};
     asio::ip::tcp::acceptor acceptor{io, endpoint};
 )
