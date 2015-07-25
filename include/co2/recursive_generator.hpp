@@ -20,23 +20,26 @@ namespace co2
         {
             using val_t = detail::wrap_reference_t<T>;
 
-            recursive_generator get_return_object()
+            recursive_generator get_return_object(coroutine<promise_type>& coro)
             {
-                return recursive_generator(_head);
+                _parent = std::move(coro);
+                _parent();
+                return recursive_generator(this);
             }
 
-            suspend_always initial_suspend()
+            bool initial_suspend() noexcept
             {
-                return {};
+                return true;
             }
 
-            void finalize() noexcept
+            bool final_suspend() noexcept
             {
                 if (_head != &_parent)
                 {
                     _head->swap(_parent);
                     (*_head)();
                 }
+                return true;
             }
 
             bool cancellation_requested() const
@@ -95,6 +98,11 @@ namespace co2
                 }
             }
 
+            coroutine<promise_type>& current()
+            {
+                return _parent;
+            }
+
         private:
 
             void reset_value()
@@ -110,21 +118,21 @@ namespace co2
                 {
                     bool await_ready() noexcept
                     {
-                        return !_child._coro || _child._coro->done();
+                        return !_child._promise;
                     }
                 
                     void await_suspend(coroutine<promise_type> const& coro) noexcept
                     {
                         auto head = coro.promise()._head;
-                        _child._coro->promise()._head = head;
-                        head->swap(*_child._coro);
+                        head->swap(_child._promise->_parent);
+                        head->promise()._head = head;
                         (*head)();
                     }
                 
                     void await_resume()
                     {
-                        if (_child._coro)
-                            _child._coro->promise().rethrow_exception();
+                        if (_child._promise)
+                            _child._promise->rethrow_exception();
                     }
                 
                     Generator _child;
@@ -133,7 +141,7 @@ namespace co2
             }
             
             coroutine<promise_type>* _head = &_parent;
-            coroutine<promise_type> _parent {this};
+            coroutine<promise_type> _parent;
             detail::storage<val_t> _data;
             detail::tag _tag = detail::tag::null;
         };
@@ -143,8 +151,8 @@ namespace co2
         {
             iterator() : _coro() {}
 
-            explicit iterator(coroutine<promise_type> const* coro)
-              : _coro(coro)
+            explicit iterator(coroutine<promise_type>& coro)
+              : _coro(&coro)
             {
                 increment();
             }
@@ -155,9 +163,10 @@ namespace co2
 
             void increment()
             {
+                auto& promise = _coro->promise();
                 (*_coro)();
-                _coro->promise().rethrow_exception();
-                if (_coro->done())
+                promise.rethrow_exception();
+                if (!*_coro)
                     _coro = nullptr;
             }
 
@@ -171,15 +180,15 @@ namespace co2
                 return _coro->promise().get();
             }
 
-            coroutine<promise_type> const* _coro;
+            coroutine<promise_type>* _coro;
         };
 
-        recursive_generator() noexcept : _coro() {}
+        recursive_generator() noexcept : _promise() {}
 
         recursive_generator(recursive_generator&& other) noexcept
-          : _coro(other._coro)
+          : _promise(other._promise)
         {
-            other._coro = nullptr;
+            other._promise = nullptr;
         }
 
         recursive_generator& operator=(recursive_generator&& other) noexcept
@@ -190,20 +199,20 @@ namespace co2
 
         ~recursive_generator()
         {
-            if (_coro)
-                _coro->reset();
+            if (_promise)
+                coroutine<promise_type>::destroy(_promise);
         }
 
         void swap(recursive_generator& other) noexcept
         {
-            _coro.swap(other._coro);
+            _promise.swap(other._promise);
         }
 
         iterator begin()
         {
-            if (!_coro || _coro->done())
+            if (!_promise)
                 return {};
-            return iterator(_coro);
+            return iterator(_promise->current());
         }
 
         iterator end()
@@ -213,11 +222,11 @@ namespace co2
 
     private:
 
-        explicit recursive_generator(coroutine<promise_type>* coro) noexcept
-          : _coro(coro)
+        explicit recursive_generator(promise_type* promise) noexcept
+          : _promise(promise)
         {}
 
-        coroutine<promise_type>* _coro;
+        promise_type* _promise;
     };
 
     template<class T>
