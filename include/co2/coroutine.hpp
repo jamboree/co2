@@ -170,11 +170,6 @@ namespace co2 { namespace detail
             ++_next;
             run(coro);
         }
-
-        bool done() const noexcept
-        {
-            return _next == sentinel::value;
-        }
     };
 
     template<class Promise>
@@ -436,11 +431,6 @@ namespace co2
         explicit operator bool() const noexcept
         {
             return !!_ptr;
-        }
-
-        bool done() const noexcept
-        {
-            return _ptr->done();
         }
 
         void operator()() noexcept
@@ -746,8 +736,8 @@ BOOST_PP_IF(_impl_CO2_IS_EMPTY t, _impl_CO2_TUPLE_FOR_EACH_EMPTY,               
 #define _impl_CO2_1ST(a, b) a
 #define _impl_CO2_2ND(a, b) b
 
-#define _impl_CO2_NEW_ALLOC(alloc, capture, ...) std::forward<decltype(alloc)>(alloc)
-#define _impl_CO2_OLD_ALLOC(alloc, capture, ...)                                \
+#define _impl_CO2_NEW_ALLOC(alloc, args) std::forward<decltype(alloc)>(alloc)
+#define _impl_CO2_OLD_ALLOC(alloc, args)                                        \
 ::co2::detail::get_alloc(_impl_CO2_TUPLE_FOR_EACH(                              \
     _impl_CO2_FWD_PARAM, capture) ::co2::detail::void_{})                       \
 /***/
@@ -763,26 +753,26 @@ BOOST_PP_IF(_impl_CO2_IS_EMPTY t, _impl_CO2_TUPLE_FOR_EACH_EMPTY,               
 /***/
 
 #define _impl_CO2_SEPARATE_ALLOC(...) (__VA_ARGS__),
-#define _impl_CO2_GET_CAPTURE(x) BOOST_PP_EXPAND(_impl_CO2_INVOKE(              \
+#define _impl_CO2_GET_ARGS(x) BOOST_PP_EXPAND(_impl_CO2_INVOKE(                 \
     _impl_CO2_1ST, (_impl_CO2_SEPARATE_ALLOC x)))                               \
 /***/
 
 #define CO2_RESERVE(bytes) using _co2_sz = ::co2::detail::temp::adjust_size<bytes>
 
-#define _impl_CO2_HEAD(R, capture, alloc, ...)                                  \
+#define _impl_CO2_HEAD(R, args, alloc, ...)                                     \
 {                                                                               \
     using _co2_T = ::co2::coroutine_traits<R>;                                  \
     using _co2_P = ::co2::detail::promise_t<_co2_T>;                            \
     using _co2_C = ::co2::coroutine<_co2_P>;                                    \
     struct _co2_K                                                               \
     {                                                                           \
-        _impl_CO2_TUPLE_FOR_EACH(_impl_CO2_DECL_PARAM, capture)                 \
+        _impl_CO2_TUPLE_FOR_EACH(_impl_CO2_DECL_PARAM, args)                    \
     };                                                                          \
-    _co2_K _co2_k = {_impl_CO2_TUPLE_FOR_EACH(_impl_CO2_FWD_PARAM, capture)};   \
-    auto _co2_a(_impl_CO2_1ST alloc(_impl_CO2_2ND alloc, capture));             \
+    _co2_K _co2_k = {_impl_CO2_TUPLE_FOR_EACH(_impl_CO2_FWD_PARAM, args)};      \
+    auto _co2_a(_impl_CO2_1ST alloc(_impl_CO2_2ND alloc, args));                \
     struct _co2_F : ::co2::detail::temp::default_size, _co2_K                   \
     {                                                                           \
-        _impl_CO2_TUPLE_FOR_EACH(_impl_CO2_USE_PARAM, capture)                  \
+        _impl_CO2_TUPLE_FOR_EACH(_impl_CO2_USE_PARAM, args)                     \
         __VA_ARGS__                                                             \
         _co2_F(_co2_K&& pack) : _co2_K(std::move(pack)) {}                      \
         using _co2_start = std::integral_constant<unsigned, __COUNTER__>;       \
@@ -803,7 +793,7 @@ BOOST_PP_IF(_impl_CO2_IS_EMPTY t, _impl_CO2_TUPLE_FOR_EACH_EMPTY,               
 /***/
 
 #define CO2_BEG(R, capture, ...) -> R _impl_CO2_HEAD(R,                         \
-    _impl_CO2_GET_CAPTURE(capture), _impl_CO2_GET_ALLOC(capture), __VA_ARGS__)  \
+    _impl_CO2_GET_ARGS(capture), _impl_CO2_GET_ALLOC(capture), __VA_ARGS__)     \
 /***/
 
 #define CO2_END                                                                 \
