@@ -72,7 +72,7 @@ template<class Alloc>
 auto coro(Alloc alloc, int i) CO2_BEG(return_type, (i) new(alloc))
 ```
 
-The `alloc` doesn't have to appear in the args-list if it's not used inside the coroutine-body.
+The `alloc` doesn't have to appear in the args-list if it's not used inside the coroutine-body. The `new` clause accepts an expression that evaluates to an _Allocator_, it's not restricted to identifiers as in the args-list.
 
 Inside the coroutine body, there are some restrictions:
 * local variables with automatic storage cannot cross suspend-resume points - you should specify them in local variables section of `CO2_BEG` as described above

@@ -40,7 +40,6 @@ namespace co2 { namespace boost_optional_detail
             return ret;
         }
 
-        template<class T>
         void set_result(T val)
         {
             _ret = std::forward<T>(val);
