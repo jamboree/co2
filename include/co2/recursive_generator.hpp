@@ -9,7 +9,7 @@
 
 #include <co2/coroutine.hpp>
 #include <co2/detail/storage.hpp>
-#include <boost/iterator/iterator_facade.hpp>
+#include <co2/detail/iterator.hpp>
 
 namespace co2
 {
@@ -52,11 +52,18 @@ namespace co2
                 reset_value();
             }
 
-            void set_exception(std::exception_ptr const& e)
+            void cancel()
             {
                 reset_value();
+            }
+
+            void set_exception(std::exception_ptr e)
+            {
+                if (_head == &_parent)
+                    std::rethrow_exception(std::move(e));
+                reset_value();
                 _tag = detail::tag::exception;
-                new(&_data) std::exception_ptr(e);
+                new(&_data) std::exception_ptr(std::move(e));
             }
 
             suspend_always yield_value(T&& t)
@@ -146,42 +153,7 @@ namespace co2
             detail::tag _tag = detail::tag::null;
         };
 
-        struct iterator
-          : boost::iterator_facade<iterator, T, std::input_iterator_tag, T&&>
-        {
-            iterator() : _coro() {}
-
-            explicit iterator(coroutine<promise_type>& coro)
-              : _coro(&coro)
-            {
-                increment();
-            }
-
-        private:
-
-            friend class boost::iterator_core_access;
-
-            void increment()
-            {
-                auto& promise = _coro->promise();
-                (*_coro)();
-                promise.rethrow_exception();
-                if (!*_coro)
-                    _coro = nullptr;
-            }
-
-            bool equal(iterator const& other) const
-            {
-                return _coro == other._coro;
-            }
-
-            T&& dereference() const
-            {
-                return _coro->promise().get();
-            }
-
-            coroutine<promise_type>* _coro;
-        };
+        using iterator = detail::iterator<T, coroutine<promise_type>>;
 
         recursive_generator() noexcept : _promise() {}
 
@@ -200,7 +172,10 @@ namespace co2
         ~recursive_generator()
         {
             if (_promise)
+            {
+                _promise->current().reset();
                 coroutine<promise_type>::destroy(_promise);
+            }
         }
 
         void swap(recursive_generator& other) noexcept

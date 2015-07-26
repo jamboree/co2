@@ -289,18 +289,14 @@ namespace co2 { namespace detail
     }
 
     template<class Promise>
-    inline auto set_exception(Promise* p, exception_storage& ex) -> decltype(p->set_exception(ex.get()), void_{})
+    inline auto set_exception(Promise* p, exception_storage& ex) -> decltype(p->set_exception(ex.get()))
     {
-        p->set_exception(ex.get());
-        return {};
+        return p->set_exception(ex.get());
     }
 
-    inline auto set_exception(void*, exception_storage& ex)
+    inline void set_exception(void*, exception_storage& ex)
     {
-        return [&ex]
-        {
-            std::rethrow_exception(ex.get());
-        };
+        std::rethrow_exception(ex.get());
     }
 
     template<class Promise>
@@ -322,6 +318,22 @@ namespace co2 { namespace detail
     {
         return a;
     }
+
+    template<class F, class P>
+    struct finalizer
+    {
+        F* f;
+        coroutine<P>& coro;
+        P& promise;
+
+        ~finalizer()
+        {
+            f->~F();
+            coro.detach(); // this order is important!
+            if (!promise.final_suspend())
+                coroutine<P>::destroy(&promise);
+        }
+    };
 
     template<class T>
     inline auto await_ready(T& t) -> decltype(t.await_ready())
@@ -800,10 +812,7 @@ BOOST_PP_IF(_impl_CO2_IS_EMPTY t, _impl_CO2_TUPLE_FOR_EACH_EMPTY,               
                     _co2_next = ::co2::detail::sentinel::value;                 \
                     ::co2::detail::final_result(&_co2_promise);                 \
                 _co2_finalize:                                                  \
-                    this->~_co2_F();                                            \
-                    _co2_c.detach();                                            \
-                    if (!_co2_promise.final_suspend())                          \
-                        _co2_C::destroy(&_co2_promise);                         \
+                    ::co2::detail::finalizer<_co2_F, _co2_P>{this, _co2_c, _co2_promise};\
                 }                                                               \
             }                                                                   \
             catch (...)                                                         \
@@ -812,12 +821,8 @@ BOOST_PP_IF(_impl_CO2_IS_EMPTY t, _impl_CO2_TUPLE_FOR_EACH_EMPTY,               
                 _co2_ex.set(std::current_exception());                          \
                 if (_co2_next != ::co2::detail::sentinel::value)                \
                     goto _co2_try_again;                                        \
-                auto fin(::co2::detail::set_exception(&_co2_promise, _co2_ex)); \
-                this->~_co2_F();                                                \
-                _co2_c.detach();                                                \
-                if (!_co2_promise.final_suspend())                              \
-                    _co2_C::destroy(&_co2_promise);                             \
-                fin();                                                          \
+                ::co2::detail::finalizer<_co2_F, _co2_P> fin{this, _co2_c, _co2_promise};\
+                ::co2::detail::set_exception(&_co2_promise, _co2_ex);           \
             }                                                                   \
             return ::co2::detail::avoid_plain_return{};                         \
         }                                                                       \
