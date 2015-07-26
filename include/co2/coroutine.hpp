@@ -739,7 +739,7 @@ BOOST_PP_IF(_impl_CO2_IS_EMPTY t, _impl_CO2_TUPLE_FOR_EACH_EMPTY,               
 #define _impl_CO2_NEW_ALLOC(alloc, args) std::forward<decltype(alloc)>(alloc)
 #define _impl_CO2_OLD_ALLOC(alloc, args)                                        \
 ::co2::detail::get_alloc(_impl_CO2_TUPLE_FOR_EACH(                              \
-    _impl_CO2_FWD_PARAM, capture) ::co2::detail::void_{})                       \
+    _impl_CO2_FWD_PARAM, args) ::co2::detail::void_{})                          \
 /***/
 
 #define _impl_CO2_INVOKE(f, args) f args
