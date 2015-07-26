@@ -42,7 +42,7 @@ namespace co2
                 return true;
             }
 
-            bool cancellation_requested() const
+            bool cancellation_requested() const noexcept
             {
                 return false;
             }
@@ -163,7 +163,7 @@ namespace co2
             other._promise = nullptr;
         }
 
-        recursive_generator& operator=(recursive_generator&& other) noexcept
+        recursive_generator& operator=(recursive_generator other) noexcept
         {
             this->~recursive_generator();
             return *new(this) recursive_generator(std::move(other));
