@@ -757,7 +757,7 @@ BOOST_PP_IF(_impl_CO2_IS_EMPTY t, _impl_CO2_TUPLE_FOR_EACH_EMPTY,               
     _impl_CO2_1ST, (_impl_CO2_SEPARATE_ALLOC x)))                               \
 /***/
 
-#define CO2_RESERVE(bytes) using _co2_sz = ::co2::detail::temp::adjust_size<bytes>
+#define CO2_TEMP_SIZE(bytes) using _co2_sz = ::co2::detail::temp::adjust_size<bytes>
 
 #define _impl_CO2_HEAD(R, args, alloc, ...)                                     \
 {                                                                               \

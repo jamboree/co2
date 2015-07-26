@@ -18,7 +18,7 @@ namespace co2 { namespace wait_detail
 {
     template<class Awaitable>
     auto run(Awaitable& a, std::mutex& mtx, std::condition_variable& cond, bool& not_ready)
-    CO2_BEG(coroutine<>, (a, mtx, cond, not_ready), CO2_RESERVE(sizeof(void*));)
+    CO2_BEG(coroutine<>, (a, mtx, cond, not_ready), CO2_TEMP_SIZE(sizeof(void*));)
     {
         CO2_AWAIT(awaken(a));
         {

@@ -202,7 +202,7 @@ namespace co2 { namespace task_detail
     };
 
     template<class T>
-    inline auto share(task<T> t) CO2_BEG(shared_task<T>, (t))
+    inline auto share(task<T> t) CO2_BEG(shared_task<T>, (t), CO2_TEMP_SIZE(sizeof(void*));)
     {
         CO2_AWAIT_RETURN(t);
     } CO2_END
