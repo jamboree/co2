@@ -158,12 +158,12 @@ namespace co2 { namespace task_detail
 
         explicit operator bool() const noexcept
         {
-            return static_cast<bool>(_promise);
+            return !!_promise;
         }
 
         bool valid() const noexcept
         {
-            return static_cast<bool>(_promise);
+            return !!_promise;
         }
 
         void swap(Task<T>& other) noexcept

@@ -8,6 +8,7 @@
 #include <catch.hpp>
 #include <co2/recursive_generator.hpp>
 #include "common.hpp"
+#include "range_algo.hpp"
 
 auto to(int i) CO2_BEG(co2::recursive_generator<int>, (i))
 {

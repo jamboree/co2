@@ -7,9 +7,8 @@
 #define CATCH_CONFIG_MAIN
 #include <catch.hpp>
 #include <co2/generator.hpp>
-#include <boost/range/irange.hpp>
-#include <boost/range/algorithm/equal.hpp>
 #include "common.hpp"
+#include "range_algo.hpp"
 
 auto range(int i, int e) CO2_BEG(co2::generator<int>, (i, e))
 {

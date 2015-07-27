@@ -83,10 +83,16 @@ namespace co2
 
         T await_resume()
         {
-            T ret(this->_promise->get());
-            this->release();
-            this->_promise = nullptr;
-            return ret;
+            struct finalizer
+            {
+                task* that;
+                ~finalizer()
+                {
+                    that->release();
+                    that->_promise = nullptr;
+                }
+            } _{this};
+            return this->_promise->get();
         }
 
         shared_task<T> share()

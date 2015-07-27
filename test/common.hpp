@@ -15,33 +15,4 @@ struct inc_on_finalize
     ~inc_on_finalize() { ++count; }
 };
 
-template<class Gen>
-void skip(Gen& gen, int n)
-{
-    if (!n)
-        return;
-
-    for (auto i : gen)
-        if (!--n)
-            break;
-};
-
-template<class Gen>
-bool empty(Gen& gen)
-{
-    return gen.begin() == gen.end();
-}
-
-template<class Gen, class T>
-bool equal_since(Gen& gen, T n)
-{
-    for (auto i : gen)
-    {
-        if (i != n)
-            return false;
-        ++n;
-    }
-    return true;
-}
-
 #endif
