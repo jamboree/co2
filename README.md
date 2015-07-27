@@ -45,7 +45,7 @@ The macro `CO2_BEG` requires you to provide some parameters:
 * _captures_ - a list of comma separated args with an optional `new` clause, e.g. `(a, b) new(alloc)`
 * _locals_ - a list of local-variable definitions, e.g. `int a;`
 
-If there's no _args_ and _locals_, it looks like:
+If there's no _captures_ and _locals_, it looks like:
 ```c++
 CO2_BEG(return_type, ())
 ```
@@ -61,7 +61,7 @@ auto f(int i) CO2_BEG(return_type, (i),
 } CO2_END
 ```
 
-However, the `()` form cannot be used, that is, `int i2(i * 2);` is not allowed here.
+However, the `()` form cannot be used here, e.g. `int i2(i * 2);`, due to some implementation restrictions.
 
 Note that in this emulation, local variables intialization happens before `initial_suspend`, and if any exception is thrown during the intialization, `set_exception` won't be called, instead, the exception will propagate to the caller directly.
 
@@ -140,12 +140,12 @@ Sometimes you can't use the normal language constructs directly, in such cases, 
 #### return
 
 * `return` -> `CO2_RETURN()`
-* `return expr` -> `CO2_RETURN(expr)`
-* `return void-expr` -> `CO2_RETURN_FROM(void-expr)` (useful in generic code)
+* `return non-void-expr` -> `CO2_RETURN(non-void-expr)`
+* `return maybe-void-expr` -> `CO2_RETURN_FROM(maybe-void-expr)` (useful in generic code)
 
 #### try-catch
 
-Needed only if the try-block is involved with the await/yield emulation.
+Needed only if the try-block is involved with the suspend-resume points.
 
 ```c++
 CO2_TRY {...}
@@ -157,7 +157,7 @@ Note that only the first `catch` clause needs to be spelled as `CO2_CATCH`, the 
 
 #### switch-case
 
-Needed only if the switch-body is involved with the await/yield emulation.
+Needed only if the switch-body is involved with the suspend-resume points.
 
 ```c++
 CO2_SWITCH (which,
@@ -175,7 +175,7 @@ default,
 ))
 ```
 
-Note that `break` is still needed if you don't want the control flow to go through the subsequnet cases, also note that `continue` **cannot** be used in `CO2_SWITCH` to continue the outer loop due to some implementation details.
+Note that `break` is still needed if you don't want the control flow to go through the subsequent cases, also note that `continue` **cannot** be used in `CO2_SWITCH` to continue the outer loop due to some implementation details.
 
 ## Difference from N4286
 
@@ -242,6 +242,7 @@ auto range(int i, int e) CO2_BEG(co2::generator<int>, (i, e))
         CO2_YIELD(i);
 } CO2_END
 ```
+For those interested in the black magic, [here](https://gist.github.com/jamboree/d6c324b6cd4a11676cda) is the preprocessed output (formatted for reading).
 
 __Use a generator__
 ```c++
