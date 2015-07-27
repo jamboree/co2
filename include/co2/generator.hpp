@@ -9,7 +9,7 @@
 
 #include <co2/coroutine.hpp>
 #include <co2/detail/storage.hpp>
-#include <co2/detail/iterator.hpp>
+#include <boost/iterator/iterator_facade.hpp>
 
 namespace co2
 {
@@ -75,7 +75,39 @@ namespace co2
             bool _valid = false;
         };
 
-        using iterator = detail::iterator<T, coroutine<promise_type>>;
+        struct iterator
+          : boost::iterator_facade<iterator, T, std::input_iterator_tag, T&&>
+        {
+            iterator() : _coro() {}
+
+            explicit iterator(coroutine<promise_type>& coro) : _coro(&coro)
+            {
+                increment();
+            }
+
+        private:
+
+            friend class boost::iterator_core_access;
+
+            void increment()
+            {
+                _coro->resume();
+                if (!*_coro)
+                    _coro = nullptr;
+            }
+
+            bool equal(iterator const& other) const
+            {
+                return _coro == other._coro;
+            }
+
+            T&& dereference() const
+            {
+                return _coro->promise().get();
+            }
+
+            coroutine<promise_type>* _coro;
+        };
 
         generator() = default;
 

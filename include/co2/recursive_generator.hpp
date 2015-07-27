@@ -9,7 +9,7 @@
 
 #include <co2/coroutine.hpp>
 #include <co2/detail/storage.hpp>
-#include <co2/detail/iterator.hpp>
+#include <boost/iterator/iterator_facade.hpp>
 
 namespace co2
 {
@@ -59,8 +59,6 @@ namespace co2
 
             void set_exception(std::exception_ptr e)
             {
-                if (_head == &_parent)
-                    std::rethrow_exception(std::move(e));
                 reset_value();
                 _tag = detail::tag::exception;
                 new(&_data) std::exception_ptr(std::move(e));
@@ -153,7 +151,41 @@ namespace co2
             detail::tag _tag = detail::tag::null;
         };
 
-        using iterator = detail::iterator<T, coroutine<promise_type>>;
+        struct iterator
+          : boost::iterator_facade<iterator, T, std::input_iterator_tag, T&&>
+        {
+            iterator() : _coro() {}
+
+            explicit iterator(coroutine<promise_type>& coro) : _coro(&coro)
+            {
+                increment();
+            }
+
+        private:
+
+            friend class boost::iterator_core_access;
+
+            void increment()
+            {
+                auto& promise = _coro->promise();
+                (*_coro)();
+                promise.rethrow_exception();
+                if (!*_coro)
+                    _coro = nullptr;
+            }
+
+            bool equal(iterator const& other) const
+            {
+                return _coro == other._coro;
+            }
+
+            T&& dereference() const
+            {
+                return _coro->promise().get();
+            }
+
+            coroutine<promise_type>* _coro;
+        };
 
         recursive_generator() noexcept : _promise() {}
 
@@ -185,9 +217,12 @@ namespace co2
 
         iterator begin()
         {
-            if (!_promise)
-                return {};
-            return iterator(_promise->current());
+            if (_promise)
+            {
+                if (auto& coro = _promise->current())
+                    return iterator(coro);
+            }
+            return {};
         }
 
         iterator end()

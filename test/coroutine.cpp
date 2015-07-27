@@ -1,14 +1,19 @@
+/*//////////////////////////////////////////////////////////////////////////////
+    Copyright (c) 2015 Jamboree
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+//////////////////////////////////////////////////////////////////////////////*/
 #define CATCH_CONFIG_MAIN
 #include <catch.hpp>
 #include <co2/coroutine.hpp>
+#include "common.hpp"
 
 auto times(int i) CO2_BEG(co2::coroutine<>, (i))
 {
     while (i--)
         CO2_AWAIT(co2::suspend_always{});
 } CO2_END
-
-struct ball {};
 
 auto throws_nth(int i) CO2_BEG(co2::coroutine<>, (i))
 {
@@ -17,12 +22,8 @@ auto throws_nth(int i) CO2_BEG(co2::coroutine<>, (i))
     throw ball();
 } CO2_END
 
-auto forever(bool& terminated) CO2_BEG(co2::coroutine<>, (terminated),
-    struct f
-    {
-        bool& terminated;
-        ~f() { terminated = true; }
-    } on_unwind_set{terminated};
+auto forever(int& terminated) CO2_BEG(co2::coroutine<>, (terminated),
+    inc_on_finalize _{terminated};
 )
 {
     for (;;)
@@ -76,7 +77,7 @@ TEST_CASE("throw check")
 
 TEST_CASE("unwind check")
 {
-    bool terminated = false;
+    int terminated = 0;
     auto coro = forever(terminated);
     CHECK_FALSE(terminated);
     coro();
