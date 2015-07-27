@@ -36,6 +36,11 @@ struct trigger
         if (_coro)
             _coro();
     }
+
+    void cancel()
+    {
+        _coro.reset();
+    }
 };
 
 #endif

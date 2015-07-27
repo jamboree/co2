@@ -35,6 +35,13 @@ auto wait(trigger<int>& t, int& terminated) CO2_BEG(co2::task<>, (t, terminated)
     CO2_AWAIT(t);
 } CO2_END
 
+auto follow(co2::task<> task, int& terminated) CO2_BEG(co2::task<>, (task, terminated),
+    inc_on_finalize _{terminated};
+)
+{
+    CO2_AWAIT(task);
+} CO2_END
+
 TEST_CASE("move check")
 {
     trigger<int> event;
@@ -79,10 +86,22 @@ TEST_CASE("unwind check")
     CHECK(terminated);
 }
 
-TEST_CASE("cancel check")
+TEST_CASE("abort check")
 {
     int terminated = 0;
     auto task = suspend(terminated);
     CHECK(terminated);
     CHECK_THROWS_AS(task.await_resume(), co2::task_cancelled);
+}
+
+TEST_CASE("cancel check")
+{
+    int terminated = 0;
+    trigger<int> event;
+    auto task = follow(wait(event, terminated), terminated);
+    event.cancel();
+    REQUIRE(task);
+    REQUIRE(task.await_ready());
+    CHECK_THROWS_AS(task.await_resume(), co2::task_cancelled);
+    CHECK(terminated == 2);
 }

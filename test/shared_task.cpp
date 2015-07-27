@@ -113,7 +113,7 @@ TEST_CASE("unwind check")
     CHECK(terminated == 3);
 }
 
-TEST_CASE("cancel check")
+TEST_CASE("abort check")
 {
     int terminated = 0;
     auto task = suspend(terminated);
@@ -123,4 +123,24 @@ TEST_CASE("cancel check")
     CHECK_THROWS_AS(task.await_resume(), co2::task_cancelled);
     CHECK_THROWS_AS(child1.await_resume(), co2::task_cancelled);
     CHECK_THROWS_AS(child2.await_resume(), co2::task_cancelled);
+}
+
+TEST_CASE("cancel check")
+{
+    int terminated = 0;
+    trigger<int> event;
+    auto task = wait(event, terminated);
+    auto child1 = follow(task, terminated);
+    auto child2 = follow(task, terminated);
+    event.cancel();
+    REQUIRE(task);
+    REQUIRE(child1);
+    REQUIRE(child2);
+    REQUIRE(task.await_ready());
+    REQUIRE(child1.await_ready());
+    REQUIRE(child2.await_ready());
+    CHECK_THROWS_AS(task.await_resume(), co2::task_cancelled);
+    CHECK_THROWS_AS(child1.await_resume(), co2::task_cancelled);
+    CHECK_THROWS_AS(child2.await_resume(), co2::task_cancelled);
+    CHECK(terminated == 3);
 }
