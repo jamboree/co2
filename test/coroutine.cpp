@@ -21,7 +21,7 @@ auto forever(bool& terminated) CO2_BEG(co2::coroutine<>, (terminated),
     struct f
     {
         bool& terminated;
-        ~f() { terminated = true;  }
+        ~f() { terminated = true; }
     } on_unwind_set{terminated};
 )
 {
