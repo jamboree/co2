@@ -604,7 +604,7 @@ namespace co2
 #   endif
 
 #define _impl_CO2_AWAIT(ret, expr, next)                                        \
-{                                                                               \
+do {                                                                            \
     using _co2_expr_t = decltype(::co2::detail::unrvref(expr));                 \
     using _co2_await = ::co2::detail::temp::traits<_co2_expr_t, _co2_sz::value>;\
     _co2_await::create(_co2_tmp, expr);                                         \
@@ -634,7 +634,7 @@ namespace co2
     ::co2::detail::temp::auto_reset<_co2_expr_t, _co2_sz::value>                \
         _co2_reset = {_co2_tmp};                                                \
     ret (::co2::await_resume(_co2_await::get(_co2_tmp)));                       \
-}                                                                               \
+} while (false)                                                                 \
 /***/
 
 #define _impl_CO2_SUSPEND(expr, next)                                           \

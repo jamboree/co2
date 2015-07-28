@@ -22,9 +22,7 @@ auto throws_depth(int i, int& terminated) CO2_BEG(co2::recursive_generator<int>,
 )
 {
     if (i)
-    {
         CO2_YIELD(throws_depth(i - 1, terminated));
-    }
     else
         throw ball();
 } CO2_END
@@ -34,9 +32,7 @@ auto forever_depth(int i, int& terminated) CO2_BEG(co2::recursive_generator<int>
 )
 {
     if (i)
-    {
         CO2_YIELD(forever_depth(i - 1, terminated));
-    }
     else
         for (;;)
             CO2_YIELD(0);
