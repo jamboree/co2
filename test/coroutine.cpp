@@ -66,13 +66,10 @@ TEST_CASE("times check")
 TEST_CASE("throw check")
 {
     CHECK_THROWS_AS(throws_nth(0), ball);
-    SECTION("throw at 2nd call")
-    {
-        auto coro = throws_nth(2);
-        CHECK_NOTHROW(coro.resume());
-        CHECK_THROWS_AS(coro.resume(), ball);
-        CHECK_FALSE(coro);
-    }
+    auto coro = throws_nth(2);
+    CHECK_NOTHROW(coro.resume());
+    CHECK_THROWS_AS(coro.resume(), ball);
+    CHECK_FALSE(coro);
 }
 
 TEST_CASE("unwind check")

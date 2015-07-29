@@ -23,7 +23,7 @@ namespace co2
             generator get_return_object(coroutine<promise_type>& coro)
             {
                 coro.resume();
-                return generator(std::move(coro));
+                return generator(coro);
             }
 
             bool initial_suspend() noexcept
