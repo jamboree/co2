@@ -20,7 +20,7 @@ namespace co2 { namespace detail
         static constexpr std::size_t tuple_size = sizeof...(T);
 
         result_t result;
-        std::atomic_flag done = ATOMIC_FLAG_INIT;
+        task_detail::atomic_coroutine_handle then;
 
         template<std::size_t N, class U>
         void set_from(U& u)
@@ -62,10 +62,10 @@ namespace co2 { namespace detail
         }
 
         template<std::size_t N, class U>
-        static auto any_then(when_any_context& ctx, U& u, coroutine<> then) CO2_BEG(coroutine<>, (ctx, u, then))
+        static auto any_then(when_any_context& ctx, U& u) CO2_BEG(coroutine<>, (ctx, u))
         {
             CO2_AWAIT(suspend_always{});
-            if (!ctx.done.test_and_set(std::memory_order_relaxed))
+            if (auto then = ctx.then.exchange_null())
             {
                 ctx.set_from<N>(u);
                 then();
@@ -74,18 +74,18 @@ namespace co2 { namespace detail
 
         template<std::size_t N>
         std::enable_if_t<(tuple_size == N + 1), bool>
-        try_suspend(std::tuple<T...>& t, coroutine<> const& then)
+        try_suspend(std::tuple<T...>& t)
         {
             auto& u = std::get<N>(t);
-            return await_suspend(u, any_then<N>(*this, u, then)), void_{};
+            return await_suspend(u, any_then<N>(*this, u)), void_{};
         }
 
         template<std::size_t N>
         std::enable_if_t<(tuple_size != N + 1), bool>
-        try_suspend(std::tuple<T...>& t, coroutine<> const& then)
+        try_suspend(std::tuple<T...>& t)
         {
             auto& u = std::get<N>(t);
-            return (await_suspend(u, any_then<N>(*this, u, then)), void_{}) && try_suspend<N + 1>(t, then);
+            return (await_suspend(u, any_then<N>(*this, u)), void_{}) && try_suspend<N + 1>(t);
         }
 
         auto suspend(std::tuple<T...>& t)
@@ -100,9 +100,10 @@ namespace co2 { namespace detail
                     return ctx.is_ready<0>(t);
                 }
 
-                bool await_suspend(coroutine<> const& then)
+                bool await_suspend(coroutine<>& then)
                 {
-                    return ctx.try_suspend<0>(t, then);
+                    ctx.then.steal(then);
+                    return ctx.try_suspend<0>(t);
                 }
 
                 result_t&& await_resume()
