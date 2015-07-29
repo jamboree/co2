@@ -142,6 +142,7 @@ Sometimes you can't use the normal language constructs directly, in such cases, 
 * `return` -> `CO2_RETURN()`
 * `return non-void-expr` -> `CO2_RETURN(non-void-expr)`
 * `return maybe-void-expr` -> `CO2_RETURN_FROM(maybe-void-expr)` (useful in generic code)
+* `return local-variable` -> `CO2_RETURN_LOCAL(local-variable)` (RV w/o explicit move)
 
 #### try-catch
 
@@ -212,6 +213,7 @@ __Macros__
 * `CO2_YIELD`
 * `CO2_RETURN`
 * `CO2_RETURN_FROM`
+* `CO2_RETURN_LOCAL`
 * `CO2_TRY`
 * `CO2_CATCH`
 * `CO2_SWITCH`

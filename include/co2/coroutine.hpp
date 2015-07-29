@@ -664,19 +664,27 @@ _impl_CO2_AWAIT(([this](let) __VA_ARGS__), expr, __COUNTER__)                   
 #define CO2_YIELD(...) CO2_AWAIT(_co2_promise.yield_value(__VA_ARGS__))
 
 #define CO2_RETURN(...)                                                         \
-{                                                                               \
+do {                                                                            \
     _co2_next = ::co2::detail::sentinel::value;                                 \
     _co2_promise.set_result(__VA_ARGS__);                                       \
     goto _co2_finalize;                                                         \
-}                                                                               \
+} while (false)                                                                 \
+/***/
+
+#define CO2_RETURN_LOCAL(var)                                                   \
+do {                                                                            \
+    _co2_next = ::co2::detail::sentinel::value;                                 \
+    _co2_promise.set_result(std::forward<decltype(var)>(var));                  \
+    goto _co2_finalize;                                                         \
+} while (false)                                                                 \
 /***/
 
 #define CO2_RETURN_FROM(...)                                                    \
-{                                                                               \
+do {                                                                            \
     _co2_next = ::co2::detail::sentinel::value;                                 \
     ::co2::detail::set_result(_co2_promise, (__VA_ARGS__, ::co2::detail::void_{}));\
     goto _co2_finalize;                                                         \
-}                                                                               \
+} while (false)                                                                 \
 /***/
 
 #define CO2_AWAIT_RETURN(expr) _impl_CO2_AWAIT(CO2_RETURN_FROM, expr, __COUNTER__)
@@ -809,7 +817,6 @@ BOOST_PP_IF(_impl_CO2_IS_EMPTY t, _impl_CO2_TUPLE_FOR_EACH_EMPTY,               
 /***/
 
 #define CO2_END                                                                 \
-                    _co2_next = ::co2::detail::sentinel::value;                 \
                     ::co2::detail::final_result(&_co2_promise);                 \
                 _co2_finalize:                                                  \
                     ::co2::detail::finalizer<_co2_F, _co2_P>{this, _co2_c, _co2_promise};\
