@@ -10,22 +10,82 @@
 #include <mutex>
 #include <thread>
 #include <cstddef>
+#include <system_error>
 #include <type_traits>
 #include <condition_variable>
 #include <co2/coroutine.hpp>
 
 namespace co2 { namespace wait_detail
 {
+    struct task
+    {
+        struct promise_type
+        {
+            bool initial_suspend() noexcept
+            {
+                return false;
+            }
+
+            bool final_suspend() noexcept
+            {
+                cond.notify_one();
+                return true;
+            }
+
+            bool cancellation_requested() const noexcept
+            {
+                return false;
+            }
+
+            task get_return_object(coroutine<promise_type>& coro)
+            {
+                coro.resume();
+                return {this};
+            }
+
+            void set_result() noexcept
+            {
+                std::unique_lock<std::mutex> lock(mtx);
+                ready = true;
+            }
+
+            void cancel() noexcept
+            {
+                std::unique_lock<std::mutex> lock(mtx);
+                ready = -1;
+            }
+
+            void wait()
+            {
+                std::unique_lock<std::mutex> lock(mtx);
+                while (!ready)
+                    cond.wait(lock);
+                if (ready == -1)
+                    throw std::system_error(ECANCELED, std::system_category());
+            }
+
+            std::mutex mtx;
+            std::condition_variable cond;
+            int ready = false;
+        };
+
+        promise_type* promise;
+    };
+
+    struct task_guard
+    {
+        task::promise_type* promise;
+        ~task_guard()
+        {
+            coroutine<task::promise_type>::destroy(promise);
+        }
+    };
+
     template<class Awaitable>
-    auto run(Awaitable& a, std::mutex& mtx, std::condition_variable& cond, bool& not_ready)
-    CO2_BEG(coroutine<>, (a, mtx, cond, not_ready), CO2_TEMP_SIZE(sizeof(void*));)
+    auto run(Awaitable& a)
+    CO2_BEG(task, (a), CO2_TEMP_SIZE(sizeof(void*));)
     {
         CO2_AWAIT(awaken(a));
-        {
-            std::unique_lock<std::mutex> lock(mtx);
-            not_ready = false;
-        }
-        cond.notify_one();
     } CO2_END
 }}
 
@@ -37,12 +97,8 @@ namespace co2
         if (await_ready(a))
             return;
 
-        std::mutex mtx;
-        std::condition_variable cond;
-        bool not_ready = true;
-        wait_detail::run(a, mtx, cond, not_ready);
-        std::unique_lock<std::mutex> lock(mtx);
-        while (not_ready) cond.wait(lock);
+        wait_detail::task_guard task{wait_detail::run(a).promise};
+        task.promise->wait();
     }
 
     template<class Awaitable>
