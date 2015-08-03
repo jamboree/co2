@@ -15,7 +15,15 @@ auto plus(boost::optional<int> i, int n) CO2_BEG(boost::optional<int>, (i, n))
     CO2_RETURN(n);
 } CO2_END
 
-TEST_CASE("normal")
+auto hang(int& terminated) CO2_BEG(boost::optional<int>, (terminated),
+    inc_on_finalize _{terminated};
+)
+{
+    CO2_AWAIT(co2::suspend_always{});
+    CO2_RETURN(42);
+} CO2_END
+
+TEST_CASE("normal check")
 {
     CHECK_FALSE(plus({}, 5));
     {
@@ -23,4 +31,11 @@ TEST_CASE("normal")
         REQUIRE(ret);
         CHECK(ret.get() == 11);
     }
+}
+
+TEST_CASE("abort check")
+{
+    int terminated = 0;
+    CHECK_FALSE(hang(terminated));
+    CHECK(terminated);
 }

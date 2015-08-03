@@ -189,6 +189,14 @@ Note that `break` is still needed if you don't want the control flow to go throu
 
 This allows you specify the behavior of the coroutine when it is cancelled (i.e. when `cancellation_requested()` returns true or coroutine is reset).
 
+* `bool resume()`
+
+This is called before the coroutine is resumed, if it returns `false`, the coroutine won't be resumed, instead, the coroutine will be detached.
+
+* `void suspend()`
+
+This is called before the coroutine is gonna be suspended, however, it won't be called for `final_suspend`.
+
 ## Reference
 
 __Headers__
