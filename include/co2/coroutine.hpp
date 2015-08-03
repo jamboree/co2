@@ -49,6 +49,172 @@ namespace co2
 
     using suspend_always = suspend<true>;
     using suspend_never = suspend<false>;
+
+    namespace detail
+    {
+        struct resumable_base
+        {
+            unsigned _next;
+            unsigned _eh;
+            virtual void run(coroutine<>&) = 0;
+            virtual void unwind(coroutine<>&) = 0;
+            virtual void release() noexcept = 0;
+        };
+
+        template<class Promise>
+        struct resumable : resumable_base, private Promise
+        {
+            Promise& promise()
+            {
+                return *this;
+            }
+
+            static resumable* from_promise(Promise* p)
+            {
+                return static_cast<resumable*>(p);
+            }
+        };
+    }
+
+    template<>
+    struct coroutine<void>
+    {
+        using handle_type = detail::resumable_base*;
+
+        struct promise_type;
+
+        coroutine() noexcept : _ptr() {}
+
+        explicit coroutine(handle_type handle) noexcept : _ptr(handle) {}
+
+        coroutine(coroutine&& other) noexcept : _ptr(other._ptr)
+        {
+            other._ptr = nullptr;
+        }
+
+        coroutine& operator=(coroutine other) noexcept
+        {
+            this->~coroutine();
+            return *new(this) coroutine(std::move(other));
+        }
+
+        ~coroutine()
+        {
+            if (_ptr)
+                _ptr->unwind(*this);
+        }
+
+        void reset() noexcept
+        {
+            if (_ptr)
+            {
+                _ptr->unwind(*this);
+                _ptr = nullptr;
+            }
+        }
+
+        void swap(coroutine& other) noexcept
+        {
+            std::swap(_ptr, other._ptr);
+        }
+
+        explicit operator bool() const noexcept
+        {
+            return !!_ptr;
+        }
+
+        void operator()() noexcept
+        {
+            _ptr->run(*this);
+        }
+
+        void resume()
+        {
+            _ptr->run(*this);
+        }
+
+        void* to_address() const noexcept
+        {
+            return _ptr;
+        }
+
+        handle_type detach() noexcept
+        {
+            auto handle = _ptr;
+            _ptr = nullptr;
+            return handle;
+        }
+
+    protected:
+
+        detail::resumable_base* _ptr;
+    };
+
+    template<class Promise>
+    struct coroutine : coroutine<>
+    {
+        using promise_type = Promise;
+
+        coroutine() = default;
+
+        coroutine(std::nullptr_t) noexcept {}
+
+        explicit coroutine(detail::resumable<Promise>* p) noexcept : coroutine<>(p) {}
+
+        explicit coroutine(Promise* p) noexcept
+        {
+            if (p)
+                _ptr = detail::resumable<Promise>::from_promise(p);
+        }
+
+        Promise& promise() const noexcept
+        {
+            return static_cast<detail::resumable<Promise>*>(_ptr)->promise();
+        }
+
+        static void destroy(Promise* p)
+        {
+            detail::resumable<Promise>::from_promise(p)->release();
+        }
+    };
+
+    struct coroutine<>::promise_type
+    {
+        bool initial_suspend() noexcept
+        {
+            return false;
+        }
+
+        bool final_suspend() noexcept
+        {
+            return false;
+        }
+
+        bool cancellation_requested() const noexcept
+        {
+            return false;
+        }
+
+        coroutine<promise_type> get_return_object(coroutine<promise_type>& coro)
+        {
+            coro.resume();
+            return std::move(coro);
+        }
+
+        void set_result() noexcept {}
+    };
+
+    template<class Promise>
+    inline bool operator==(coroutine<Promise> const& lhs, coroutine<Promise> const& rhs)
+    {
+        return lhs.to_address() == rhs.to_address();
+    }
+
+    template<class Promise>
+    inline bool operator!=(coroutine<Promise> const& lhs, coroutine<Promise> const& rhs)
+    {
+        return lhs.to_address() != rhs.to_address();
+    }
 }
 
 namespace co2 { namespace detail
@@ -158,33 +324,26 @@ namespace co2 { namespace detail
 
     using sentinel = std::integral_constant<unsigned, ~1u>;
 
-    struct resumable_base
+    template<class Promise>
+    inline auto resume(Promise* p) -> decltype(p->resume())
     {
-        unsigned _next;
-        unsigned _eh;
-        virtual void run(coroutine<>&) = 0;
-        virtual void release() noexcept = 0;
+        decltype(p->suspend()) is_also_required();
+        return p->resume();
+    }
 
-        void unwind(coroutine<>& coro)
-        {
-            ++_next;
-            run(coro);
-        }
-    };
+    constexpr bool resume(void*)
+    {
+        return true;
+    }
 
     template<class Promise>
-    struct resumable : resumable_base, private Promise
+    inline auto suspend(Promise* p) -> decltype(p->suspend())
     {
-        Promise& promise()
-        {
-            return *this;
-        }
+        decltype(p->resume()) is_also_required();
+        p->suspend();
+    }
 
-        static resumable* from_promise(Promise* p)
-        {
-            return static_cast<resumable*>(p);
-        }
-    };
+    inline void suspend(void*) {}
 
     template<class Alloc, class T>
     using rebind_alloc_t =
@@ -229,8 +388,22 @@ namespace co2 { namespace detail
 
         void run(coroutine<>& coro) override
         {
-            reinterpret_cast<F&>(_mem.f)
-            (static_cast<coroutine<Promise>&>(coro), this->_next, this->_eh, &_mem.tmp);
+            if (detail::resume(&this->promise()))
+            {
+                reinterpret_cast<F&>(_mem.f)
+                (static_cast<coroutine<Promise>&>(coro), this->_next, this->_eh, &_mem.tmp);
+            }
+            else
+                coro.detach();
+        }
+
+        void unwind(coroutine<>& coro) override
+        {
+            if (detail::resume(&this->promise()))
+            {
+                reinterpret_cast<F&>(_mem.f)
+                (static_cast<coroutine<Promise>&>(coro), ++this->_next, this->_eh, &_mem.tmp);
+            }
         }
 
         void release() noexcept override
@@ -240,20 +413,7 @@ namespace co2 { namespace detail
             traits::deallocate(alloc, this, 1);
         }
     };
-#   if 0
-    template<class Promise>
-    struct empty_frame final : resumable<Promise>
-    {
-        empty_frame()
-        {
-            this->_next = sentinel::value;
-        }
 
-        void run(coroutine<> const& coro) override {}
-
-        void release(coroutine<> const& coro) noexcept override {}
-    };
-#   endif
     template<class T>
     using promise_t = typename T::promise_type;
 
@@ -398,146 +558,6 @@ namespace co2
     template<class T>
     using await_result_t = decltype(await_resume(std::declval<std::add_lvalue_reference_t<T>>()));
 
-    template<>
-    struct coroutine<void>
-    {
-        using handle_type = detail::resumable_base*;
-
-        struct promise_type;
-
-        coroutine() noexcept : _ptr() {}
-
-        explicit coroutine(handle_type handle) noexcept : _ptr(handle) {}
-
-        coroutine(coroutine&& other) noexcept : _ptr(other._ptr)
-        {
-            other._ptr = nullptr;
-        }
-
-        coroutine& operator=(coroutine other) noexcept
-        {
-            this->~coroutine();
-            return *new(this) coroutine(std::move(other));
-        }
-
-        ~coroutine()
-        {
-            if (_ptr)
-                _ptr->unwind(*this);
-        }
-
-        void reset() noexcept
-        {
-            if (_ptr)
-            {
-                _ptr->unwind(*this);
-                _ptr = nullptr;
-            }
-        }
-
-        void swap(coroutine& other) noexcept
-        {
-            std::swap(_ptr, other._ptr);
-        }
-
-        explicit operator bool() const noexcept
-        {
-            return !!_ptr;
-        }
-
-        void operator()() noexcept
-        {
-            _ptr->run(*this);
-        }
-
-        void resume()
-        {
-            _ptr->run(*this);
-        }
-
-        void* to_address() const noexcept
-        {
-            return _ptr;
-        }
-
-        handle_type detach() noexcept
-        {
-            auto handle = _ptr;
-            _ptr = nullptr;
-            return handle;
-        }
-
-    protected:
-
-        detail::resumable_base* _ptr;
-    };
-
-    template<class Promise>
-    struct coroutine : coroutine<>
-    {
-        using promise_type = Promise;
-
-        coroutine() = default;
-
-        coroutine(std::nullptr_t) noexcept {}
-
-        explicit coroutine(detail::resumable<Promise>* p) noexcept : coroutine<>(p) {}
-
-        explicit coroutine(Promise* p) noexcept
-        {
-            if (p)
-                _ptr = detail::resumable<Promise>::from_promise(p);
-        }
-
-        Promise& promise() const noexcept
-        {
-            return static_cast<detail::resumable<Promise>*>(_ptr)->promise();
-        }
-
-        static void destroy(Promise* p)
-        {
-            detail::resumable<Promise>::from_promise(p)->release();
-        }
-    };
-
-    struct coroutine<>::promise_type
-    {
-        bool initial_suspend() noexcept
-        {
-            return false;
-        }
-
-        bool final_suspend() noexcept
-        {
-            return false;
-        }
-
-        bool cancellation_requested() const noexcept
-        {
-            return false;
-        }
-
-        coroutine<promise_type> get_return_object(coroutine<promise_type>& coro)
-        {
-            coro.resume();
-            return std::move(coro);
-        }
-
-        void set_result() noexcept {}
-    };
-
-    template<class Promise>
-    inline bool operator==(coroutine<Promise> const& lhs, coroutine<Promise> const& rhs)
-    {
-        return lhs.to_address() == rhs.to_address();
-    }
-
-    template<class Promise>
-    inline bool operator!=(coroutine<Promise> const& lhs, coroutine<Promise> const& rhs)
-    {
-        return lhs.to_address() != rhs.to_address();
-    }
-
     namespace detail
     {
         template<class Task>
@@ -547,13 +567,13 @@ namespace co2
 
             bool await_ready() const
             {
-                return co2::await_ready(task);
+                return await_ready(task);
             }
 
             template<class F>
-            auto await_suspend(F&& f) const -> decltype(co2::await_suspend(task, std::forward<F>(f)))
+            auto await_suspend(F&& f) const -> decltype(await_suspend(task, std::forward<F>(f)))
             {
-                return co2::await_suspend(task, std::forward<F>(f));
+                return await_suspend(task, std::forward<F>(f));
             }
 
             void await_resume() const noexcept {}
@@ -613,8 +633,9 @@ do {                                                                            
         if (!::co2::await_ready(_co2_await::get(_co2_tmp)))                     \
         {                                                                       \
             _co2_next = next;                                                   \
-            if (::co2::await_suspend(_co2_await::get(_co2_tmp), _co2_c),        \
-                ::co2::detail::void_{})                                         \
+            ::co2::detail::suspend(&_co2_p);                                    \
+            if ((::co2::await_suspend(_co2_await::get(_co2_tmp), _co2_c),       \
+                ::co2::detail::void_{}) || !::co2::detail::resume(&_co2_p))     \
                 return ::co2::detail::avoid_plain_return{};                     \
         }                                                                       \
     }                                                                           \
@@ -624,11 +645,11 @@ do {                                                                            
         throw;                                                                  \
     }                                                                           \
     case next:                                                                  \
-    if (_co2_promise.cancellation_requested())                                  \
+    if (_co2_p.cancellation_requested())                                        \
     {                                                                           \
         case __COUNTER__:                                                       \
         _co2_await::reset(_co2_tmp);                                            \
-        ::co2::detail::cancel(&_co2_promise);                                   \
+        ::co2::detail::cancel(&_co2_p);                                         \
         goto _co2_finalize;                                                     \
     }                                                                           \
     ::co2::detail::temp::auto_reset<_co2_expr_t, _co2_sz::value>                \
@@ -639,16 +660,17 @@ do {                                                                            
 
 #define _impl_CO2_SUSPEND(expr, next)                                           \
 {                                                                               \
-    if (_co2_promise.expr)                                                      \
+    if (_co2_p.expr)                                                            \
     {                                                                           \
         _co2_next = next;                                                       \
+        ::co2::detail::suspend(&_co2_p);                                        \
         return ::co2::detail::avoid_plain_return{};                             \
     }                                                                           \
     case next:                                                                  \
-    if (_co2_promise.cancellation_requested())                                  \
+    if (_co2_p.cancellation_requested())                                        \
     {                                                                           \
         case __COUNTER__:                                                       \
-        ::co2::detail::cancel(&_co2_promise);                                   \
+        ::co2::detail::cancel(&_co2_p);                                         \
         goto _co2_finalize;                                                     \
     }                                                                           \
 }                                                                               \
@@ -661,12 +683,12 @@ do {                                                                            
 _impl_CO2_AWAIT(([this](let) __VA_ARGS__), expr, __COUNTER__)                   \
 /***/
 
-#define CO2_YIELD(...) CO2_AWAIT(_co2_promise.yield_value(__VA_ARGS__))
+#define CO2_YIELD(...) CO2_AWAIT(_co2_p.yield_value(__VA_ARGS__))
 
 #define CO2_RETURN(...)                                                         \
 do {                                                                            \
     _co2_next = ::co2::detail::sentinel::value;                                 \
-    _co2_promise.set_result(__VA_ARGS__);                                       \
+    _co2_p.set_result(__VA_ARGS__);                                             \
     goto _co2_finalize;                                                         \
 } while (false)                                                                 \
 /***/
@@ -674,7 +696,7 @@ do {                                                                            
 #define CO2_RETURN_LOCAL(var)                                                   \
 do {                                                                            \
     _co2_next = ::co2::detail::sentinel::value;                                 \
-    _co2_promise.set_result(std::forward<decltype(var)>(var));                  \
+    _co2_p.set_result(std::forward<decltype(var)>(var));                        \
     goto _co2_finalize;                                                         \
 } while (false)                                                                 \
 /***/
@@ -682,7 +704,7 @@ do {                                                                            
 #define CO2_RETURN_FROM(...)                                                    \
 do {                                                                            \
     _co2_next = ::co2::detail::sentinel::value;                                 \
-    ::co2::detail::set_result(_co2_promise, (__VA_ARGS__, ::co2::detail::void_{}));\
+    ::co2::detail::set_result(_co2_p, (__VA_ARGS__, ::co2::detail::void_{}));   \
     goto _co2_finalize;                                                         \
 } while (false)                                                                 \
 /***/
@@ -799,7 +821,7 @@ BOOST_PP_IF(_impl_CO2_IS_EMPTY t, _impl_CO2_TUPLE_FOR_EACH_EMPTY,               
         ::co2::detail::avoid_plain_return operator()                            \
         (_co2_C& _co2_c, unsigned& _co2_next, unsigned& _co2_eh, void* _co2_tmp)\
         {                                                                       \
-            auto& _co2_promise = _co2_c.promise();                              \
+            auto& _co2_p = _co2_c.promise();                                    \
             ::co2::detail::exception_storage _co2_ex;                           \
             _co2_try_again:                                                     \
             try                                                                 \
@@ -817,9 +839,9 @@ BOOST_PP_IF(_impl_CO2_IS_EMPTY t, _impl_CO2_TUPLE_FOR_EACH_EMPTY,               
 /***/
 
 #define CO2_END                                                                 \
-                    ::co2::detail::final_result(&_co2_promise);                 \
+                    ::co2::detail::final_result(&_co2_p);                       \
                 _co2_finalize:                                                  \
-                    ::co2::detail::finalizer<_co2_F, _co2_P>{this, _co2_c, _co2_promise};\
+                    ::co2::detail::finalizer<_co2_F, _co2_P>{this, _co2_c, _co2_p};\
                 }                                                               \
             }                                                                   \
             catch (...)                                                         \
@@ -828,8 +850,8 @@ BOOST_PP_IF(_impl_CO2_IS_EMPTY t, _impl_CO2_TUPLE_FOR_EACH_EMPTY,               
                 _co2_ex.set(std::current_exception());                          \
                 if (_co2_next != ::co2::detail::sentinel::value)                \
                     goto _co2_try_again;                                        \
-                ::co2::detail::finalizer<_co2_F, _co2_P> fin{this, _co2_c, _co2_promise};\
-                ::co2::detail::set_exception(&_co2_promise, _co2_ex);           \
+                ::co2::detail::finalizer<_co2_F, _co2_P> fin{this, _co2_c, _co2_p};\
+                ::co2::detail::set_exception(&_co2_p, _co2_ex);                 \
             }                                                                   \
             return ::co2::detail::avoid_plain_return{};                         \
         }                                                                       \
