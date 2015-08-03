@@ -40,7 +40,7 @@ namespace co2 { namespace wait_detail
             task get_return_object(coroutine<promise_type>& coro)
             {
                 task ret(this);
-                coroutine<promise_type>(std::move(coro)).resume();
+                coro.resume();
                 return ret;
             }
 
@@ -65,11 +65,6 @@ namespace co2 { namespace wait_detail
                     throw std::system_error(ECANCELED, std::system_category());
             }
 
-            ~promise_type()
-            {
-                std::cout << "~promise_type()\n";
-            }
-
             std::mutex mtx;
             std::condition_variable cond;
             int ready = false;
@@ -92,8 +87,7 @@ namespace co2 { namespace wait_detail
     };
 
     template<class Awaitable>
-    auto run(Awaitable& a)
-    CO2_BEG(task, (a), CO2_TEMP_SIZE(sizeof(void*));)
+    auto run(Awaitable& a) CO2_BEG(task, (a), CO2_TEMP_SIZE(sizeof(void*));)
     {
         CO2_AWAIT(awaken(a));
     } CO2_END

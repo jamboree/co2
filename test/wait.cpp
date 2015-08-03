@@ -16,7 +16,7 @@ struct pitcher
         return false;
     }
 
-    void await_suspend(co2::coroutine<>&) noexcept
+    void await_suspend(co2::coroutine<>&)
     {
         throw ball();
     }
