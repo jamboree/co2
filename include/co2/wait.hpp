@@ -39,8 +39,9 @@ namespace co2 { namespace wait_detail
 
             task get_return_object(coroutine<promise_type>& coro)
             {
-                coro.resume();
-                return {this};
+                task ret(this);
+                coroutine<promise_type>(std::move(coro)).resume();
+                return ret;
             }
 
             void set_result() noexcept
@@ -64,21 +65,30 @@ namespace co2 { namespace wait_detail
                     throw std::system_error(ECANCELED, std::system_category());
             }
 
+            ~promise_type()
+            {
+                std::cout << "~promise_type()\n";
+            }
+
             std::mutex mtx;
             std::condition_variable cond;
             int ready = false;
         };
 
-        promise_type* promise;
-    };
+        explicit task(promise_type* promise) : promise(promise) {}
 
-    struct task_guard
-    {
-        task::promise_type* promise;
-        ~task_guard()
+        task(task&& other) : promise(other.promise)
         {
-            coroutine<task::promise_type>::destroy(promise);
+            other.promise = nullptr;
         }
+
+        ~task()
+        {
+            if (promise)
+                coroutine<promise_type>::destroy(promise);
+        }
+
+        promise_type* promise;
     };
 
     template<class Awaitable>
@@ -97,7 +107,7 @@ namespace co2
         if (await_ready(a))
             return;
 
-        wait_detail::task_guard task{wait_detail::run(a).promise};
+        auto task(wait_detail::run(a));
         task.promise->wait();
     }
 
