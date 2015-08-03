@@ -34,10 +34,16 @@ namespace co2 { namespace boost_optional_detail
 
         optional<T> get_return_object(coroutine<promise>& coro)
         {
+            struct finalize
+            {
+                promise* that;
+                ~finalize()
+                {
+                    coroutine<promise>::destroy(that);
+                }
+            } _{this};
             coro.resume();
-            auto ret(std::move(_ret));
-            coroutine<promise>::destroy(this);
-            return ret;
+            return std::move(_ret);
         }
 
         void set_result(T val)
