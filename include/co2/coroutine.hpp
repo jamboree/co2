@@ -567,13 +567,13 @@ namespace co2
 
             bool await_ready() const
             {
-                return await_ready(task);
+                return co2::await_ready(task);
             }
 
             template<class F>
-            auto await_suspend(F&& f) const -> decltype(await_suspend(task, std::forward<F>(f)))
+            auto await_suspend(F&& f) const -> decltype(co2::await_suspend(task, std::forward<F>(f)))
             {
-                return await_suspend(task, std::forward<F>(f));
+                return co2::await_suspend(task, std::forward<F>(f));
             }
 
             void await_resume() const noexcept {}

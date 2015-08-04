@@ -62,7 +62,7 @@ namespace co2 { namespace wait_detail
                 while (!ready)
                     cond.wait(lock);
                 if (ready == -1)
-                    throw std::system_error(ECANCELED, std::system_category());
+                    throw std::system_error(std::make_error_code(std::errc::operation_canceled));
             }
 
             std::mutex mtx;
