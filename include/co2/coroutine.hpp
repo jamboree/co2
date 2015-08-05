@@ -759,7 +759,6 @@ while (false)                                                                   
 
 #define CO2_SWITCH(n, ...) _impl_CO2_SWITCH(n, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
 
-#define _impl_CO2_TYPE_PARAM(r, _, e) , decltype(e)
 #define _impl_CO2_DECL_PARAM(r, _, e) decltype(e) e;
 #define _impl_CO2_FWD_PARAM(r, _, e) std::forward<decltype(e)>(e),
 #define _impl_CO2_USE_PARAM(r, _, e) using _co2_K::e;

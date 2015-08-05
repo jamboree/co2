@@ -11,12 +11,24 @@
 #include <co2/task.hpp>
 #include <co2/utility/ornion.hpp>
 
+namespace co2
+{
+    template<class... T>
+    struct when_any_result
+    {
+        using type = ornion<typename await_result<T>::type...>;
+    };
+
+    template<class... T>
+    using when_any_result_t = typename when_any_result<T...>::type;
+}
+
 namespace co2 { namespace detail
 {
     template<class... T>
     struct when_any_context
     {
-        using result_t = ornion<typename await_result<T>::type...>;
+        using result_t = when_any_result_t<T...>;
         static constexpr std::size_t tuple_size = sizeof...(T);
 
         result_t result;
@@ -120,7 +132,7 @@ namespace co2
 {
     template<class... T>
     inline auto when_any(std::tuple<T...> t)
-    CO2_BEG(task<typename detail::when_any_context<T...>::result_t>, (t),
+    CO2_BEG(task<when_any_result_t<T...>>, (t),
         detail::when_any_context<T...> ctx;
     )
     {
