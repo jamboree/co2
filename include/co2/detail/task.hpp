@@ -194,6 +194,11 @@ namespace co2 { namespace task_detail
             }
         }
 
+        bool is_cancelled() const noexcept
+        {
+            return _promise->_tag.load(std::memory_order_relaxed) == tag::cancelled;
+        }
+
         bool await_ready() const noexcept
         {
             return _promise->_tag.load(std::memory_order_relaxed) != tag::null;
