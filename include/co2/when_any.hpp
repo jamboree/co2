@@ -33,6 +33,18 @@ namespace co2 { namespace detail
 
         result_t result;
         task_detail::atomic_coroutine_handle then;
+        std::atomic<unsigned> count {0u};
+
+        struct fin
+        {
+            when_any_context& ctx;
+
+            ~fin()
+            {
+                if (ctx.count.fetch_add(1u, std::memory_order_relaxed) + 1 == tuple_size)
+                    ctx.then.exchange_null();
+            }
+        };
 
         template<std::size_t N, class U>
         void set_from(U& u)
@@ -74,7 +86,8 @@ namespace co2 { namespace detail
         }
 
         template<std::size_t N, class U>
-        static auto any_then(when_any_context& ctx, U& u) CO2_BEG(coroutine<>, (ctx, u))
+        static auto any_then(when_any_context& ctx, U& u)
+        CO2_BEG(coroutine<>, (ctx, u), fin _{ctx};)
         {
             CO2_AWAIT(suspend_always{});
             if (auto then = ctx.then.exchange_null())

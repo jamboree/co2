@@ -106,6 +106,36 @@ namespace co2
     {
         a.swap(b);
     }
+
+    inline auto make_ready_task() CO2_BEG(task<>, ())
+    {
+        CO2_RETURN();
+    } CO2_END
+
+    template<class T>
+    inline auto make_ready_task(T&& val) CO2_BEG(task<std::decay_t<T>>, (val))
+    {
+        CO2_RETURN(std::forward<T>(val));
+    } CO2_END
+
+    template<class T>
+    inline auto make_ready_task(std::reference_wrapper<T> val) CO2_BEG(task<T&>, (val))
+    {
+        CO2_RETURN(val);
+    } CO2_END
+
+    template<class T>
+    inline auto make_exceptional_task(std::exception_ptr ex) CO2_BEG(task<T>, (ex))
+    {
+        std::rethrow_exception(std::move(ex));
+    } CO2_END
+
+    template<class T = void>
+    inline auto make_cancelled_task() CO2_BEG(task<T>, ())
+    {
+        CO2_AWAIT(co2::suspend_always{});
+    } CO2_END
+
 }
 
 #endif

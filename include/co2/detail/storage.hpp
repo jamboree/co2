@@ -39,7 +39,7 @@ namespace co2 { namespace detail
 
     enum class tag
     {
-        null, value, exception
+        null, value, exception, cancelled
     };
 }}
 

@@ -64,8 +64,15 @@ namespace co2 { namespace task_detail
 
         T&& get()
         {
-            if (Base::_tag.load(std::memory_order_acquire) == tag::exception)
+            switch (Base::_tag.load(std::memory_order_acquire))
+            {
+            case tag::exception:
                 std::rethrow_exception(_data.exception);
+            case tag::cancelled:
+                throw task_cancelled();
+            default:
+                break;
+            }
             return static_cast<T&&>(_data.value);
         }
 
@@ -102,8 +109,15 @@ namespace co2 { namespace task_detail
 
         void get()
         {
-            if (Base::_tag.load(std::memory_order_acquire) == tag::exception)
+            switch (Base::_tag.load(std::memory_order_acquire))
+            {
+            case tag::exception:
                 std::rethrow_exception(_e);
+            case tag::cancelled:
+                throw task_cancelled();
+            default:
+                return;
+            }
         }
 
         std::exception_ptr _e;
@@ -125,7 +139,7 @@ namespace co2 { namespace task_detail
 
             void cancel() noexcept
             {
-                this->set_exception(std::make_exception_ptr(task_cancelled{}));
+                Promise::_tag.store(tag::cancelled, std::memory_order_release);
             }
 
             bool final_suspend() noexcept
