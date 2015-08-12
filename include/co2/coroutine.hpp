@@ -820,6 +820,7 @@ BOOST_PP_IF(_impl_CO2_IS_EMPTY t, _impl_CO2_TUPLE_FOR_EACH_EMPTY,               
         ::co2::detail::avoid_plain_return operator()                            \
         (_co2_C& _co2_c, unsigned& _co2_next, unsigned& _co2_eh, void* _co2_tmp)\
         {                                                                       \
+            void _co2_suppress_unused_warning(_co2_F::_co2_sz);                 \
             auto& _co2_p = _co2_c.promise();                                    \
             ::co2::detail::exception_storage _co2_ex;                           \
             _co2_try_again:                                                     \
