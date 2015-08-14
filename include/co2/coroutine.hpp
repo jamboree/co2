@@ -563,7 +563,7 @@ namespace co2
         template<class Task>
         struct awaken_awaiter
         {
-            Task& task;
+            Task task;
 
             bool await_ready() const
             {
@@ -581,9 +581,9 @@ namespace co2
     }
 
     template<class Task>
-    inline detail::awaken_awaiter<Task> awaken(Task& task)
+    inline detail::awaken_awaiter<Task> awaken(Task&& task)
     {
-        return {task};
+        return {std::forward<Task>(task)};
     }
 }
 
