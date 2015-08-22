@@ -623,6 +623,17 @@ namespace co2
     // } IS_EMPTY
 #   endif
 
+#define _impl_CO2_TUPLE_FOR_EACH_IMPL(macro, t)                                 \
+BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)                     \
+/***/
+
+#define _impl_CO2_TUPLE_FOR_EACH_EMPTY(macro, t)
+
+#define _impl_CO2_TUPLE_FOR_EACH(macro, t)                                      \
+BOOST_PP_IF(_impl_CO2_IS_EMPTY t, _impl_CO2_TUPLE_FOR_EACH_EMPTY,               \
+    _impl_CO2_TUPLE_FOR_EACH_IMPL)(macro, t)                                    \
+/***/
+
 #define _impl_CO2_AWAIT(ret, expr, next)                                        \
 do {                                                                            \
     using _co2_expr_t = decltype(::co2::detail::unrvref(expr));                 \
@@ -759,20 +770,32 @@ while (false)                                                                   
 
 #define CO2_SWITCH(n, ...) _impl_CO2_SWITCH(n, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
 
+#if defined(BOOST_GCC)
+#define _impl_CO2_TYPE_PARAM(r, _, e) using BOOST_PP_CAT(e, _t) = decltype(e);
+#define _impl_CO2_DECL_PARAM(r, _, e) BOOST_PP_CAT(e, _t) e;
+#define _impl_CO2_K(args)                                                       \
+struct _co2_KK                                                                  \
+{                                                                               \
+    _impl_CO2_TUPLE_FOR_EACH(_impl_CO2_TYPE_PARAM, args)                        \
+    struct pack                                                                 \
+    {                                                                           \
+        _impl_CO2_TUPLE_FOR_EACH(_impl_CO2_DECL_PARAM, args)                    \
+    };                                                                          \
+};                                                                              \
+using _co2_K = typename _co2_KK::pack;                                          \
+/***/
+#else
 #define _impl_CO2_DECL_PARAM(r, _, e) decltype(e) e;
+#define _impl_CO2_K(args)                                                       \
+struct _co2_K                                                                   \
+{                                                                               \
+    _impl_CO2_TUPLE_FOR_EACH(_impl_CO2_DECL_PARAM, args)                        \
+};                                                                              \
+/***/
+#endif
+
 #define _impl_CO2_FWD_PARAM(r, _, e) std::forward<decltype(e)>(e),
 #define _impl_CO2_USE_PARAM(r, _, e) using _co2_K::e;
-
-#define _impl_CO2_TUPLE_FOR_EACH_IMPL(macro, t)                                 \
-BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)                     \
-/***/
-
-#define _impl_CO2_TUPLE_FOR_EACH_EMPTY(macro, t)
-
-#define _impl_CO2_TUPLE_FOR_EACH(macro, t)                                      \
-BOOST_PP_IF(_impl_CO2_IS_EMPTY t, _impl_CO2_TUPLE_FOR_EACH_EMPTY,               \
-    _impl_CO2_TUPLE_FOR_EACH_IMPL)(macro, t)                                    \
-/***/
 
 #define _impl_CO2_1ST(a, b) a
 #define _impl_CO2_2ND(a, b) b
@@ -805,10 +828,7 @@ BOOST_PP_IF(_impl_CO2_IS_EMPTY t, _impl_CO2_TUPLE_FOR_EACH_EMPTY,               
     using _co2_T = ::co2::coroutine_traits<R>;                                  \
     using _co2_P = ::co2::detail::promise_t<_co2_T>;                            \
     using _co2_C = ::co2::coroutine<_co2_P>;                                    \
-    struct _co2_K                                                               \
-    {                                                                           \
-        _impl_CO2_TUPLE_FOR_EACH(_impl_CO2_DECL_PARAM, args)                    \
-    };                                                                          \
+    _impl_CO2_K(args)                                                           \
     _co2_K _co2_k = {_impl_CO2_TUPLE_FOR_EACH(_impl_CO2_FWD_PARAM, args)};      \
     auto _co2_a(_impl_CO2_1ST alloc(_impl_CO2_2ND alloc, args));                \
     struct _co2_F : ::co2::detail::temp::default_size, _co2_K                   \
@@ -820,7 +840,7 @@ BOOST_PP_IF(_impl_CO2_IS_EMPTY t, _impl_CO2_TUPLE_FOR_EACH_EMPTY,               
         ::co2::detail::avoid_plain_return operator()                            \
         (_co2_C& _co2_c, unsigned& _co2_next, unsigned& _co2_eh, void* _co2_tmp)\
         {                                                                       \
-            void _co2_suppress_unused_warning(_co2_F::_co2_sz);                 \
+            void _co2_suppress_unused_warning(_co2_sz);                         \
             auto& _co2_p = _co2_c.promise();                                    \
             ::co2::detail::exception_storage _co2_ex;                           \
             _co2_try_again:                                                     \
