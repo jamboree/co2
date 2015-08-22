@@ -212,7 +212,7 @@ namespace co2
 
         void swap(recursive_generator& other) noexcept
         {
-            _promise.swap(other._promise);
+            std::swap(_promise, other._promise);
         }
 
         iterator begin()
