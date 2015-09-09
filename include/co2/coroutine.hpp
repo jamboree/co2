@@ -561,7 +561,7 @@ namespace co2
     namespace detail
     {
         template<class Task>
-        struct awaken_awaiter
+        struct ready_awaiter
         {
             Task task;
 
@@ -581,7 +581,7 @@ namespace co2
     }
 
     template<class Task>
-    inline detail::awaken_awaiter<Task> awaken(Task&& task)
+    inline detail::ready_awaiter<Task> ready(Task&& task)
     {
         return {std::forward<Task>(task)};
     }

@@ -4,8 +4,8 @@
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //////////////////////////////////////////////////////////////////////////////*/
-#ifndef CO2_NTH_AWAKEN_HPP_INCLUDED
-#define CO2_NTH_AWAKEN_HPP_INCLUDED
+#ifndef CO2_NTH_READY_HPP_INCLUDED
+#define CO2_NTH_READY_HPP_INCLUDED
 
 #include <tuple>
 #include <type_traits>
@@ -14,7 +14,7 @@
 namespace co2 { namespace detail
 {
     template<class Tuple>
-    struct nth_awaken_awaiter
+    struct nth_ready_awaiter
     {
         Tuple args;
         int n;
@@ -57,7 +57,7 @@ namespace co2 { namespace detail
             return fs;
         }
 
-        nth_awaken_awaiter(Tuple&& args, int n) : args(std::forward<Tuple>(args)), n(n) {}
+        nth_ready_awaiter(Tuple&& args, int n) : args(std::forward<Tuple>(args)), n(n) {}
 
         bool await_ready()
         {
@@ -77,7 +77,7 @@ namespace co2 { namespace detail
 namespace co2
 {
     template<class Tuple>
-    inline detail::nth_awaken_awaiter<Tuple> nth_awaken(int n, Tuple&& args)
+    inline detail::nth_ready_awaiter<Tuple> nth_ready(int n, Tuple&& args)
     {
         return {std::forward<Tuple>(args), n};
     }

@@ -89,7 +89,7 @@ namespace co2 { namespace wait_detail
     template<class Awaitable>
     auto run(Awaitable& a) CO2_BEG(task, (a), CO2_TEMP_SIZE(sizeof(void*));)
     {
-        CO2_AWAIT(awaken(a));
+        CO2_AWAIT(ready(a));
     } CO2_END
 }}
 

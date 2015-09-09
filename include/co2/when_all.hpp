@@ -8,7 +8,7 @@
 #define CO2_WHEN_ALL_HPP_INCLUDED
 
 #include <co2/task.hpp>
-#include <co2/nth_awaken.hpp>
+#include <co2/nth_ready.hpp>
 
 namespace co2
 {
@@ -35,7 +35,7 @@ namespace co2
     CO2_BEG(co2::task<when_all_result_t<T...>>, (args), int i;)
     {
         for (i = 0; i != sizeof...(T); ++i)
-            CO2_AWAIT(nth_awaken(i, args));
+            CO2_AWAIT(nth_ready(i, args));
         CO2_RETURN(detail::make_all_result(args, std::make_index_sequence<sizeof...(T)>{}));
     } CO2_END
 
