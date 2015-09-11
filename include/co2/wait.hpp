@@ -17,6 +17,25 @@
 
 namespace co2 { namespace wait_detail
 {
+    template<class Task>
+    struct wrapper
+    {
+        Task& task;
+
+        bool await_ready() noexcept
+        {
+            return false;
+        }
+
+        template<class F>
+        auto await_suspend(F&& f) -> decltype(co2::await_suspend(task, std::forward<F>(f)))
+        {
+            return co2::await_suspend(task, std::forward<F>(f));
+        }
+
+        void await_resume() noexcept {}
+    };
+
     struct task
     {
         struct promise_type
@@ -89,7 +108,7 @@ namespace co2 { namespace wait_detail
     template<class Awaitable>
     auto run(Awaitable& a) CO2_BEG(task, (a), CO2_TEMP_SIZE(sizeof(void*));)
     {
-        CO2_AWAIT(ready(a));
+        CO2_AWAIT(wrapper<Awaitable>{a});
     } CO2_END
 }}
 

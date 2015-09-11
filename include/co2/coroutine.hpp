@@ -576,7 +576,7 @@ namespace co2
                 return co2::await_suspend(task, std::forward<F>(f));
             }
 
-            void await_resume() const noexcept {}
+            void await_resume() noexcept {}
         };
     }
 
