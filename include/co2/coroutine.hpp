@@ -823,6 +823,27 @@ struct _co2_K                                                                   
 
 #define CO2_TEMP_SIZE(bytes) using _co2_sz = ::co2::detail::temp::adjust_size<bytes>
 
+#   if defined(BOOST_MSVC) | defined(BOOST_CLANG)
+namespace co2 { namespace detail
+{
+    template<class T, class R>
+    R ret_of(R(T::*)());
+}}
+#       if defined(BOOST_MSVC)
+#       define _impl_CO2_SUPPRESS_NO_DEF __pragma(warning(suppress:4822))
+#       else
+#       define _impl_CO2_SUPPRESS_NO_DEF
+#       endif
+#   define _impl_CO2_AUTO_F(var) BOOST_PP_CAT(_co2_auto_, var)
+#   define CO2_AUTO(var, expr)                                                  \
+    _impl_CO2_SUPPRESS_NO_DEF                                                   \
+    auto _impl_CO2_AUTO_F(var)() -> std::decay_t<decltype(expr)>;               \
+    decltype(::co2::detail::ret_of(&_co2_F::_impl_CO2_AUTO_F(var))) var{expr}   \
+    /***/
+#   else
+#   define CO2_AUTO(var, expr) std::decay_t<decltype(expr)> var{expr}
+#   endif
+
 #define _impl_CO2_HEAD(R, args, alloc, ...)                                     \
 {                                                                               \
     using _co2_T = ::co2::coroutine_traits<R>;                                  \

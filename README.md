@@ -62,6 +62,7 @@ auto f(int i) CO2_BEG(return_type, (i),
 ```
 
 However, the `()` form cannot be used here, e.g. `int i2(i * 2);`, due to some implementation restrictions.
+Besides, `auto` deduced varaible cannot be used directly, i.e. `auto var{expr};`, you have to use `CO2_AUTO(var, expr)` instead.
 
 Note that in this emulation, local variables intialization happens before `initial_suspend`, and if any exception is thrown during the intialization, `set_exception` won't be called, instead, the exception will propagate to the caller directly.
 
@@ -226,6 +227,7 @@ __Macros__
 * `CO2_CATCH`
 * `CO2_SWITCH`
 * `CO2_TEMP_SIZE`
+* `CO2_AUTO`
 
 __Classes__
 * `co2::coroutine_traits<R>`
