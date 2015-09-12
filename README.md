@@ -1,4 +1,4 @@
-CO2 - Coroutine II [![Try it online][badge.wandbox]](http://melpon.org/wandbox/permlink/ptOc4rRjPtA9qSfW)
+CO2 - Coroutine II [![Try it online][badge.wandbox]](http://melpon.org/wandbox/permlink/3DxowhMfUplIX5kL)
 ===
 
 A header-only C++ stackless coroutine emulation library, providing interface close to [N4286](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4286.pdf).
@@ -62,7 +62,7 @@ auto f(int i) CO2_BEG(return_type, (i),
 ```
 
 However, the `()` form cannot be used here, e.g. `int i2(i * 2);`, due to some implementation restrictions.
-Besides, `auto` deduced varaible cannot be used directly, i.e. `auto var{expr};`, you have to use `CO2_AUTO(var, expr)` instead.
+Besides, `auto` deduced variable cannot be used directly, i.e. `auto var{expr};`, you have to use `CO2_AUTO(var, expr)` instead.
 
 Note that in this emulation, local variables intialization happens before `initial_suspend`, and if any exception is thrown during the intialization, `set_exception` won't be called, instead, the exception will propagate to the caller directly.
 
