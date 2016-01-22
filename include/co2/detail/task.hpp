@@ -44,12 +44,7 @@ namespace co2 { namespace task_detail
     {
         using val_t = detail::wrap_reference_t<T>;
 
-        void set_result(T&& t)
-        {
-            set_result<T>(std::forward<T>(t));
-        }
-
-        template<class U>
+        template<class U = T>
         void set_result(U&& u)
         {
             new(&_data.value) val_t(std::forward<U>(u));
