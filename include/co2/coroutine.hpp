@@ -221,6 +221,8 @@ namespace co2 { namespace detail
 {
     namespace temp
     {
+        struct warning;
+
         template<std::size_t Bytes, std::size_t RefSize = 1>
         using adjust_size = std::integral_constant<std::size_t, (Bytes > RefSize ? Bytes : RefSize)>;
 
@@ -234,6 +236,13 @@ namespace co2 { namespace detail
         {
             static void create(void* p, T&& t)
             {
+#   if defined(CO2_WARN_DYN_ALLOC)
+#       if defined(BOOST_MSVC)
+                warning resort_to_dynamic_allocation(char(&)[sizeof(T)]);
+#       else
+                warning* resort_to_dynamic_allocation;
+#       endif
+#   endif
                 *static_cast<T**>(p) = new T(std::move(t));
             }
 
@@ -284,10 +293,25 @@ namespace co2 { namespace detail
         };
 
         template<class T, std::size_t Bytes>
-        struct traits : traits_non_ref<T, (sizeof(T) > Bytes)> {};
+        struct traits_non_ref_check
+        {
+            static constexpr bool needs_alloc = sizeof(T) > Bytes;
+
+            static_assert(!needs_alloc || Bytes >= sizeof(void*),
+                "CO2_TEMP_SIZE too small to hold a pointer");
+
+            using type = traits_non_ref<T, needs_alloc>;
+        };
 
         template<class T, std::size_t Bytes>
-        struct traits<T&, Bytes> : traits_ref<T> {};
+        struct traits : traits_non_ref_check<T, Bytes>::type {};
+
+        template<class T, std::size_t Bytes>
+        struct traits<T&, Bytes> : traits_ref<T>
+        {
+            static_assert(Bytes >= sizeof(void*),
+                "CO2_TEMP_SIZE too small to hold a reference");
+        };
 
         template<class T, std::size_t Bytes>
         struct auto_reset
