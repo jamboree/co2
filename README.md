@@ -117,6 +117,11 @@ Equivalent to `f(await expr)`, where `f` can be a unary function or macro.
 
 Equivalent to `CO2_AWAIT(<this-promise>.yield_value(expr))`, as how `yield` is defined in N4286.
 
+* `CO2_YIELD_WITH(fn)`
+
+Suspend the coroutine with the callable object `fn`. This signature of `fn` is the same as `await_suspend`.
+
+
 The fact that `await` in _CO2_ is not an expression has an implication on object lifetime, consider this case:
 
 `await something{temporaries}` and `something` holds references to temporaries.
@@ -222,6 +227,7 @@ __Macros__
 * `CO2_AWAIT_RETURN`
 * `CO2_AWAIT_APPLY`
 * `CO2_YIELD`
+* `CO2_YIELD_WITH`
 * `CO2_RETURN`
 * `CO2_RETURN_FROM`
 * `CO2_RETURN_LOCAL`

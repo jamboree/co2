@@ -693,6 +693,22 @@ do {                                                                            
 } while (false)                                                                 \
 /***/
 
+#define _impl_CO2_YIELD_WITH(f, next)                                           \
+do {                                                                            \
+    _co2_next = next;                                                           \
+    ::co2::detail::suspend(&_co2_p);                                            \
+    if ((f(_co2_c), ::co2::detail::void_{}) || !::co2::detail::resume(&_co2_p)) \
+        return ::co2::detail::avoid_plain_return{};                             \
+    case next:                                                                  \
+    if (_co2_p.cancellation_requested())                                        \
+    {                                                                           \
+        case __COUNTER__:                                                       \
+        ::co2::detail::cancel(&_co2_p);                                         \
+        goto _co2_finalize;                                                     \
+    }                                                                           \
+} while (false)                                                                 \
+/***/
+
 #define _impl_CO2_SUSPEND(expr, next)                                           \
 {                                                                               \
     if (_co2_p.expr)                                                            \
@@ -719,6 +735,8 @@ _impl_CO2_AWAIT(([this](let) __VA_ARGS__), expr, __COUNTER__)                   
 /***/
 
 #define CO2_YIELD(...) CO2_AWAIT(_co2_p.yield_value(__VA_ARGS__))
+
+#define CO2_YIELD_WITH(f) _impl_CO2_YIELD_WITH(f, __COUNTER__)
 
 #define CO2_RETURN(...)                                                         \
 do {                                                                            \
@@ -834,7 +852,7 @@ struct _co2_K                                                                   
 #define _impl_CO2_DISPATCH_impl_CO2_GET_ALLOC_ (_impl_CO2_OLD_ALLOC, ~)
 #define _impl_CO2_DISPATCH_NEW_ALLOC
 #define _impl_CO2_GET_ALLOC_new(a) _NEW_ALLOC (_impl_CO2_NEW_ALLOC, a)
-#define _impl_CO2_SKIP_CAPTURE(...) 
+#define _impl_CO2_SKIP_CAPTURE(...)
 #define _impl_CO2_GET_ALLOC(x) BOOST_PP_EXPAND(_impl_CO2_INVOKE(                \
     BOOST_PP_CAT, (_impl_CO2_DISPATCH, _impl_CO2_INVOKE(                        \
         BOOST_PP_CAT, (_impl_CO2_GET_ALLOC_, _impl_CO2_SKIP_CAPTURE x)))))      \
