@@ -27,7 +27,7 @@ namespace co2 { namespace task_detail
 
         void finalize() noexcept
         {
-            auto next = _then.exchange({}, std::memory_order_relaxed);
+            auto next = _then.exchange({}, std::memory_order_acquire);
             while (next)
             {
                 coroutine<> coro(next);
@@ -43,7 +43,7 @@ namespace co2 { namespace task_detail
             do
             {
                 (void)cb.exchange_link(prev);
-            } while (!_then.compare_exchange_weak(prev, curr, std::memory_order_relaxed));
+            } while (!_then.compare_exchange_weak(prev, curr, std::memory_order_release));
             if (_tag.load(std::memory_order_relaxed) == tag::null
                 || !_then.compare_exchange_strong(curr, prev, std::memory_order_relaxed))
             {
