@@ -56,6 +56,7 @@ namespace co2
         {
             unsigned _next;
             unsigned _eh;
+            resumable_base* _link = nullptr;
             virtual void run(coroutine<>&) = 0;
             virtual void unwind(coroutine<>&) = 0;
             virtual void release() noexcept = 0;
@@ -143,6 +144,11 @@ namespace co2
             auto handle = _ptr;
             _ptr = nullptr;
             return handle;
+        }
+
+        handle_type exchange_link(handle_type h) noexcept
+        {
+            return std::exchange(_ptr->_link, h);
         }
 
     protected:

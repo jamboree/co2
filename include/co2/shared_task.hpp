@@ -17,19 +17,8 @@ namespace co2 { namespace task_detail
     struct shared_promise_base : promise_base
     {
         std::atomic<unsigned> _use_count {2u};
-        std::atomic<unsigned> _lock {0};
         std::atomic<tag> _tag {tag::null};
-        std::vector<coroutine<>> _followers;
-
-        struct unlocker
-        {
-            std::atomic<unsigned>& lock;
-
-            ~unlocker()
-            {
-                lock.store(0, std::memory_order_release);
-            }
-        };
+        std::atomic<coroutine<>::handle_type> _then {nullptr};
 
         bool test_last() noexcept
         {
@@ -38,25 +27,30 @@ namespace co2 { namespace task_detail
 
         void finalize() noexcept
         {
-            while (_lock.exchange(2u, std::memory_order_acquire));
-            for (auto& f : _followers)
-                f();
-            _followers.clear();
-            _followers.shrink_to_fit();
+            auto next = _then.exchange({}, std::memory_order_relaxed);
+            while (next)
+            {
+                coroutine<> coro(next);
+                next = coro.exchange_link({});
+                coro();
+            }
         }
 
         bool follow(coroutine<>& cb)
         {
-            unsigned flag;
+            auto prev = _then.load(std::memory_order_relaxed);
+            auto curr = coroutine<>::handle_type(cb.to_address());
             do
             {
-                flag = _lock.fetch_or(1u, std::memory_order_acquire);
-                if (flag & 2u)
-                    return false;
-            } while (flag);
-            unlocker _{_lock};
-            _followers.push_back(std::move(cb));
-            return true;
+                (void)cb.exchange_link(prev);
+            } while (!_then.compare_exchange_weak(prev, curr, std::memory_order_relaxed));
+            if (_tag.load(std::memory_order_relaxed) == tag::null
+                || !_then.compare_exchange_strong(curr, prev, std::memory_order_relaxed))
+            {
+                cb.detach();
+                return true;
+            }
+            return false;
         }
     };
 
