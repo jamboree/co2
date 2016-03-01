@@ -52,6 +52,7 @@ namespace co2 { namespace task_detail
                         cb.detach();
                         return true;
                     }
+                    break;
                 }
             }
             return false;
