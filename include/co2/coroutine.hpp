@@ -56,7 +56,7 @@ namespace co2
         {
             unsigned _next;
             unsigned _eh;
-            resumable_base* _link = nullptr;
+            void* _data;
             virtual void run(coroutine<>&) = 0;
             virtual void unwind(coroutine<>&) = 0;
             virtual void release() noexcept = 0;
@@ -77,10 +77,17 @@ namespace co2
         };
     }
 
+    using coroutine_handle = detail::resumable_base*;
+
+    inline void*& coroutine_data(coroutine_handle h)
+    {
+        return h->_data;
+    }
+
     template<>
     struct coroutine<void>
     {
-        using handle_type = detail::resumable_base*;
+        using handle_type = coroutine_handle;
 
         struct promise_type;
 
@@ -114,6 +121,13 @@ namespace co2
             }
         }
 
+        void reset(handle_type handle) noexcept
+        {
+            if (_ptr)
+                _ptr->unwind(*this);
+            _ptr = handle;
+        }
+
         void swap(coroutine& other) noexcept
         {
             std::swap(_ptr, other._ptr);
@@ -139,16 +153,16 @@ namespace co2
             return _ptr;
         }
 
+        handle_type handle() const noexcept
+        {
+            return _ptr;
+        }
+
         handle_type detach() noexcept
         {
             auto handle = _ptr;
             _ptr = nullptr;
             return handle;
-        }
-
-        handle_type exchange_link(handle_type h) noexcept
-        {
-            return std::exchange(_ptr->_link, h);
         }
 
     protected:

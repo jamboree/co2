@@ -18,7 +18,7 @@ namespace co2 { namespace task_detail
     {
         std::atomic<unsigned> _use_count {2u};
         std::atomic<tag> _tag {tag::null};
-        std::atomic<coroutine<>::handle_type> _then {nullptr};
+        std::atomic<void*> _then {this};
 
         bool test_last() noexcept
         {
@@ -27,11 +27,11 @@ namespace co2 { namespace task_detail
 
         void finalize() noexcept
         {
-            auto next = _then.exchange({}, std::memory_order_acquire);
-            while (next)
+            auto next = _then.exchange(nullptr, std::memory_order_acquire);
+            while (next != this)
             {
-                coroutine<> coro(next);
-                next = coro.exchange_link({});
+                coroutine<> coro(static_cast<coroutine_handle>(next));
+                next = coroutine_data(coro.handle());
                 coro();
             }
         }
@@ -39,16 +39,20 @@ namespace co2 { namespace task_detail
         bool follow(coroutine<>& cb)
         {
             auto prev = _then.load(std::memory_order_relaxed);
-            auto curr = coroutine<>::handle_type(cb.to_address());
-            do
+            auto curr = cb.to_address();
+            auto& next = coroutine_data(cb.handle());
+            while (prev)
             {
-                (void)cb.exchange_link(prev);
-            } while (!_then.compare_exchange_weak(prev, curr, std::memory_order_release));
-            if (_tag.load(std::memory_order_relaxed) == tag::null
-                || !_then.compare_exchange_strong(curr, prev, std::memory_order_relaxed))
-            {
-                cb.detach();
-                return true;
+                next = static_cast<coroutine_handle>(prev);
+                if (_then.compare_exchange_weak(prev, curr, std::memory_order_release))
+                {
+                    if (_tag.load(std::memory_order_relaxed) == tag::null
+                        || !_then.compare_exchange_strong(curr, prev, std::memory_order_relaxed))
+                    {
+                        cb.detach();
+                        return true;
+                    }
+                }
             }
             return false;
         }
