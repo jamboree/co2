@@ -1,4 +1,4 @@
-CO2 - Coroutine II [![Try it online][badge.wandbox]](http://melpon.org/wandbox/permlink/CGCzv3ww3NMsj1Tg)
+CO2 - Coroutine II [![Try it online][badge.wandbox]](http://melpon.org/wandbox/permlink/Opk47mZ4la27xAnl)
 ===
 
 A header-only C++ stackless coroutine emulation library, providing interface close to [N4286](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4286.pdf).
@@ -343,6 +343,41 @@ auto server(asio::io_service& io, unsigned port) CO2_BEG(co2::task<>, (io, port)
     for ( ; ; )
         CO2_AWAIT_APPLY(session, act::accept(acceptor));
 } CO2_END
+```
+
+### Task scheduling
+It's very easy to write a generic task that can be used with different schedulers.
+For example, a `fib` task that works with `concurrency::task_group` and `tbb::task_group` can be defined as below:
+```c++
+template<class Scheduler>
+auto fib(Scheduler& sched, int n) CO2_BEG(co2::task<int>, (sched, n),
+    co2::task<int> a, b;
+)
+{
+    // Schedule the continuation.
+    CO2_YIELD_WITH([&](co2::coroutine<>& c) { sched.run([h = c.detach()]{ co2::coroutine<>{h}(); });
+    // From now on, the code is executed on the Scheduler.
+    if (n >= 2)
+    {
+        a = fib(wg, n - 1);
+        b = fib(wg, n - 2);
+        CO2_AWAIT_SET(n, a);
+        CO2_AWAIT_APPLY(n +=, b);
+    }
+    CO2_RETURN(n);
+} CO2_END
+```
+
+#### PPL Usage
+```c++
+concurrency::task_group sched;
+auto val = fib(sched, 16);
+```
+
+#### TBB Usage
+```c++
+tbb::task_group sched;
+auto val = fib(sched, 16);
 ```
 
 ## License

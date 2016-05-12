@@ -632,53 +632,53 @@ namespace co2
 }
 
 #   if defined(BOOST_MSVC)
-#   define _impl_CO2_IS_EMPTY BOOST_PP_IS_EMPTY
-#   define _impl_CO2_PUSH_NAME_HIDDEN_WARNING                                   \
+#   define Zz_CO2_IS_EMPTY BOOST_PP_IS_EMPTY
+#   define Zz_CO2_PUSH_NAME_HIDDEN_WARNING                                      \
     __pragma(warning(push))                                                     \
     __pragma(warning(disable:4456))                                             \
     /***/
-#   define _impl_CO2_POP_WARNING __pragma(warning(pop))
+#   define Zz_CO2_POP_WARNING __pragma(warning(pop))
 #   else
-#   define _impl_CO2_PUSH_NAME_HIDDEN_WARNING
-#   define _impl_CO2_POP_WARNING
+#   define Zz_CO2_PUSH_NAME_HIDDEN_WARNING
+#   define Zz_CO2_POP_WARNING
 // The IS_EMPTY trick is from:
 // http://gustedt.wordpress.com/2010/06/08/detect-empty-macro-arguments/
 // IS_EMPTY {
-#   define _impl_CO2_ARG16(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, ...) _15
-#   define _impl_CO2_HAS_COMMA(...) _impl_CO2_ARG16(__VA_ARGS__, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0)
-#   define _impl_CO2_TRIGGER_PARENTHESIS_(...) ,
+#   define Zz_CO2_ARG16(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, ...) _15
+#   define Zz_CO2_HAS_COMMA(...) Zz_CO2_ARG16(__VA_ARGS__, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0)
+#   define Zz_CO2_TRIGGER_PARENTHESIS_(...) ,
 
-#   define _impl_CO2_IS_EMPTY(...)                                              \
-    _impl_CO2_IS_EMPTY_IMPL(                                                    \
+#   define Zz_CO2_IS_EMPTY(...)                                                 \
+    Zz_CO2_IS_EMPTY_IMPL(                                                       \
         /* test if there is just one argument, eventually an empty one */       \
-        _impl_CO2_HAS_COMMA(__VA_ARGS__),                                       \
-        /* test if _impl_CO2_TRIGGER_PARENTHESIS_ together with the argument adds a comma */\
-        _impl_CO2_HAS_COMMA(_impl_CO2_TRIGGER_PARENTHESIS_ __VA_ARGS__),        \
+        Zz_CO2_HAS_COMMA(__VA_ARGS__),                                          \
+        /* test if Zz_CO2_TRIGGER_PARENTHESIS_ together with the argument adds a comma */\
+        Zz_CO2_HAS_COMMA(Zz_CO2_TRIGGER_PARENTHESIS_ __VA_ARGS__),              \
         /* test if the argument together with a parenthesis adds a comma */     \
-        _impl_CO2_HAS_COMMA(__VA_ARGS__ (/*empty*/)),                           \
-        /* test if placing it between _impl_CO2_TRIGGER_PARENTHESIS_ and the parenthesis adds a comma */\
-        _impl_CO2_HAS_COMMA(_impl_CO2_TRIGGER_PARENTHESIS_ __VA_ARGS__ (/*empty*/))\
+        Zz_CO2_HAS_COMMA(__VA_ARGS__ (/*empty*/)),                              \
+        /* test if placing it between Zz_CO2_TRIGGER_PARENTHESIS_ and the parenthesis adds a comma */\
+        Zz_CO2_HAS_COMMA(Zz_CO2_TRIGGER_PARENTHESIS_ __VA_ARGS__ (/*empty*/))   \
     )                                                                           \
     /***/
 
-#   define _impl_CO2_PASTE5(_0, _1, _2, _3, _4) _0 ## _1 ## _2 ## _3 ## _4
-#   define _impl_CO2_IS_EMPTY_IMPL(_0, _1, _2, _3) _impl_CO2_HAS_COMMA(_impl_CO2_PASTE5(_impl_CO2_IS_EMPTY_CASE_, _0, _1, _2, _3))
-#   define _impl_CO2_IS_EMPTY_CASE_0001 ,
+#   define Zz_CO2_PASTE5(_0, _1, _2, _3, _4) _0 ## _1 ## _2 ## _3 ## _4
+#   define Zz_CO2_IS_EMPTY_IMPL(_0, _1, _2, _3) Zz_CO2_HAS_COMMA(Zz_CO2_PASTE5(Zz_CO2_IS_EMPTY_CASE_, _0, _1, _2, _3))
+#   define Zz_CO2_IS_EMPTY_CASE_0001 ,
     // } IS_EMPTY
 #   endif
 
-#define _impl_CO2_TUPLE_FOR_EACH_IMPL(macro, t)                                 \
+#define Zz_CO2_TUPLE_FOR_EACH_IMPL(macro, t)                                    \
 BOOST_PP_SEQ_FOR_EACH(macro, ~, BOOST_PP_VARIADIC_TO_SEQ t)                     \
 /***/
 
-#define _impl_CO2_TUPLE_FOR_EACH_EMPTY(macro, t)
+#define Zz_CO2_TUPLE_FOR_EACH_EMPTY(macro, t)
 
-#define _impl_CO2_TUPLE_FOR_EACH(macro, t)                                      \
-BOOST_PP_IF(_impl_CO2_IS_EMPTY t, _impl_CO2_TUPLE_FOR_EACH_EMPTY,               \
-    _impl_CO2_TUPLE_FOR_EACH_IMPL)(macro, t)                                    \
+#define Zz_CO2_TUPLE_FOR_EACH(macro, t)                                         \
+BOOST_PP_IF(Zz_CO2_IS_EMPTY t, Zz_CO2_TUPLE_FOR_EACH_EMPTY,                     \
+    Zz_CO2_TUPLE_FOR_EACH_IMPL)(macro, t)                                       \
 /***/
 
-#define _impl_CO2_AWAIT(ret, expr, next)                                        \
+#define Zz_CO2_AWAIT(ret, expr, next)                                           \
 do {                                                                            \
     using _co2_expr_t = decltype(::co2::detail::unrvref(expr));                 \
     using _co2_await = ::co2::detail::temp::traits<_co2_expr_t, _co2_sz::value>;\
@@ -713,7 +713,7 @@ do {                                                                            
 } while (false)                                                                 \
 /***/
 
-#define _impl_CO2_YIELD_WITH(f, next)                                           \
+#define Zz_CO2_YIELD_WITH(f, next)                                              \
 do {                                                                            \
     _co2_next = next;                                                           \
     ::co2::detail::suspend(&_co2_p);                                            \
@@ -729,7 +729,7 @@ do {                                                                            
 } while (false)                                                                 \
 /***/
 
-#define _impl_CO2_SUSPEND(expr, next)                                           \
+#define Zz_CO2_SUSPEND(expr, next)                                              \
 {                                                                               \
     if (_co2_p.expr)                                                            \
     {                                                                           \
@@ -747,16 +747,16 @@ do {                                                                            
 }                                                                               \
 /***/
 
-#define CO2_AWAIT_APPLY(f, expr) _impl_CO2_AWAIT(f, expr, __COUNTER__)
-#define CO2_AWAIT_SET(var, expr) _impl_CO2_AWAIT(var =, expr, __COUNTER__)
-#define CO2_AWAIT(expr) _impl_CO2_AWAIT(, expr, __COUNTER__)
+#define CO2_AWAIT_APPLY(f, expr) Zz_CO2_AWAIT(f, expr, __COUNTER__)
+#define CO2_AWAIT_SET(var, expr) Zz_CO2_AWAIT(var =, expr, __COUNTER__)
+#define CO2_AWAIT(expr) Zz_CO2_AWAIT(, expr, __COUNTER__)
 #define CO2_AWAIT_LET(let, expr, ...)                                           \
-_impl_CO2_AWAIT(([this](let) __VA_ARGS__), expr, __COUNTER__)                   \
+Zz_CO2_AWAIT(([this](let) __VA_ARGS__), expr, __COUNTER__)                      \
 /***/
 
 #define CO2_YIELD(...) CO2_AWAIT(_co2_p.yield_value(__VA_ARGS__))
 
-#define CO2_YIELD_WITH(f) _impl_CO2_YIELD_WITH(f, __COUNTER__)
+#define CO2_YIELD_WITH(f) Zz_CO2_YIELD_WITH(f, __COUNTER__)
 
 #define CO2_RETURN(...)                                                         \
 do {                                                                            \
@@ -782,13 +782,13 @@ do {                                                                            
 } while (false)                                                                 \
 /***/
 
-#define CO2_AWAIT_RETURN(expr) _impl_CO2_AWAIT(CO2_RETURN_FROM, expr, __COUNTER__)
+#define CO2_AWAIT_RETURN(expr) Zz_CO2_AWAIT(CO2_RETURN_FROM, expr, __COUNTER__)
 
 #define CO2_TRY                                                                 \
-_impl_CO2_PUSH_NAME_HIDDEN_WARNING                                              \
+Zz_CO2_PUSH_NAME_HIDDEN_WARNING                                                 \
 using _co2_prev_eh = _co2_curr_eh;                                              \
 using _co2_curr_eh = std::integral_constant<unsigned, __COUNTER__>;             \
-_impl_CO2_POP_WARNING                                                           \
+Zz_CO2_POP_WARNING                                                              \
 _co2_eh = _co2_curr_eh::value;                                                  \
 if (true)                                                                       \
 /***/
@@ -803,84 +803,84 @@ else case _co2_curr_eh::value:                                                  
     catch                                                                       \
 /***/
 
-#define _impl_CO2_SWITCH_LABEL(n) BOOST_PP_CAT(BOOST_PP_CAT(_co2_case_, __LINE__), n)
+#define Zz_CO2_SWITCH_LABEL(n) BOOST_PP_CAT(BOOST_PP_CAT(_co2_case_, __LINE__), n)
 
-#define _impl_CO2_SWITCH_CASE(r, _, i, e)                                       \
-BOOST_PP_IF(BOOST_PP_MOD(i, 2), , e: goto _impl_CO2_SWITCH_LABEL(i);)           \
+#define Zz_CO2_SWITCH_CASE(r, _, i, e)                                          \
+BOOST_PP_IF(BOOST_PP_MOD(i, 2), , e: goto Zz_CO2_SWITCH_LABEL(i);)              \
 /***/
 
-#define _impl_CO2_UNPAREN(...) __VA_ARGS__
-#define _impl_CO2_SWITCH_BODY_TRUE(i, e) _impl_CO2_SWITCH_LABEL(BOOST_PP_DEC(i)): _impl_CO2_UNPAREN e
-#define _impl_CO2_SWITCH_BODY_FALSE(i, e)
+#define Zz_CO2_UNPAREN(...) __VA_ARGS__
+#define Zz_CO2_SWITCH_BODY_TRUE(i, e) Zz_CO2_SWITCH_LABEL(BOOST_PP_DEC(i)): Zz_CO2_UNPAREN e
+#define Zz_CO2_SWITCH_BODY_FALSE(i, e)
 
-#define _impl_CO2_SWITCH_BODY(r, _, i, e)                                       \
+#define Zz_CO2_SWITCH_BODY(r, _, i, e)                                          \
 BOOST_PP_IF(BOOST_PP_MOD(i, 2),                                                 \
-    _impl_CO2_SWITCH_BODY_TRUE, _impl_CO2_SWITCH_BODY_FALSE)(i, e)              \
+    Zz_CO2_SWITCH_BODY_TRUE, Zz_CO2_SWITCH_BODY_FALSE)(i, e)                    \
 /***/
 
-#define _impl_CO2_SWITCH(n, seq)                                                \
+#define Zz_CO2_SWITCH(n, seq)                                                   \
 switch (n)                                                                      \
 {                                                                               \
-    BOOST_PP_SEQ_FOR_EACH_I(_impl_CO2_SWITCH_CASE, ~, seq)                      \
+    BOOST_PP_SEQ_FOR_EACH_I(Zz_CO2_SWITCH_CASE, ~, seq)                         \
 }                                                                               \
 while (false)                                                                   \
 {                                                                               \
-    BOOST_PP_SEQ_FOR_EACH_I(_impl_CO2_SWITCH_BODY, ~, seq)                      \
+    BOOST_PP_SEQ_FOR_EACH_I(Zz_CO2_SWITCH_BODY, ~, seq)                         \
         break;                                                                  \
 }                                                                               \
 /***/
 
-#define CO2_SWITCH(n, ...) _impl_CO2_SWITCH(n, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
+#define CO2_SWITCH(n, ...) Zz_CO2_SWITCH(n, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
 
 #if defined(BOOST_GCC)
-#define _impl_CO2_TYPE_PARAM(r, _, e) using BOOST_PP_CAT(e, _t) = decltype(e);
-#define _impl_CO2_DECL_PARAM(r, _, e) BOOST_PP_CAT(e, _t) e;
-#define _impl_CO2_K(args)                                                       \
+#define Zz_CO2_TYPE_PARAM(r, _, e) using BOOST_PP_CAT(e, _t) = decltype(e);
+#define Zz_CO2_DECL_PARAM(r, _, e) BOOST_PP_CAT(e, _t) e;
+#define Zz_CO2_K(args)                                                          \
 struct _co2_KK                                                                  \
 {                                                                               \
-    _impl_CO2_TUPLE_FOR_EACH(_impl_CO2_TYPE_PARAM, args)                        \
+    Zz_CO2_TUPLE_FOR_EACH(Zz_CO2_TYPE_PARAM, args)                              \
     struct pack                                                                 \
     {                                                                           \
-        _impl_CO2_TUPLE_FOR_EACH(_impl_CO2_DECL_PARAM, args)                    \
+        Zz_CO2_TUPLE_FOR_EACH(Zz_CO2_DECL_PARAM, args)                          \
     };                                                                          \
 };                                                                              \
 using _co2_K = typename _co2_KK::pack;                                          \
 /***/
 #else
-#define _impl_CO2_DECL_PARAM(r, _, e) decltype(e) e;
-#define _impl_CO2_K(args)                                                       \
+#define Zz_CO2_DECL_PARAM(r, _, e) decltype(e) e;
+#define Zz_CO2_K(args)                                                          \
 struct _co2_K                                                                   \
 {                                                                               \
-    _impl_CO2_TUPLE_FOR_EACH(_impl_CO2_DECL_PARAM, args)                        \
+    Zz_CO2_TUPLE_FOR_EACH(Zz_CO2_DECL_PARAM, args)                              \
 };                                                                              \
 /***/
 #endif
 
-#define _impl_CO2_FWD_PARAM(r, _, e) std::forward<decltype(e)>(e),
-#define _impl_CO2_USE_PARAM(r, _, e) using _co2_K::e;
+#define Zz_CO2_FWD_PARAM(r, _, e) std::forward<decltype(e)>(e),
+#define Zz_CO2_USE_PARAM(r, _, e) using _co2_K::e;
 
-#define _impl_CO2_1ST(a, b) a
-#define _impl_CO2_2ND(a, b) b
+#define Zz_CO2_1ST(a, b) a
+#define Zz_CO2_2ND(a, b) b
 
-#define _impl_CO2_NEW_ALLOC(alloc, args) std::forward<decltype(alloc)>(alloc)
-#define _impl_CO2_OLD_ALLOC(alloc, args)                                        \
-::co2::detail::get_alloc(_impl_CO2_TUPLE_FOR_EACH(                              \
-    _impl_CO2_FWD_PARAM, args) ::co2::detail::void_{})                          \
+#define Zz_CO2_NEW_ALLOC(alloc, args) std::forward<decltype(alloc)>(alloc)
+#define Zz_CO2_OLD_ALLOC(alloc, args)                                           \
+::co2::detail::get_alloc(Zz_CO2_TUPLE_FOR_EACH(                                 \
+    Zz_CO2_FWD_PARAM, args) ::co2::detail::void_{})                             \
 /***/
 
-#define _impl_CO2_INVOKE(f, args) f args
-#define _impl_CO2_DISPATCH_impl_CO2_GET_ALLOC_ (_impl_CO2_OLD_ALLOC, ~)
-#define _impl_CO2_DISPATCH_NEW_ALLOC
-#define _impl_CO2_GET_ALLOC_new(a) _NEW_ALLOC (_impl_CO2_NEW_ALLOC, a)
-#define _impl_CO2_SKIP_CAPTURE(...)
-#define _impl_CO2_GET_ALLOC(x) BOOST_PP_EXPAND(_impl_CO2_INVOKE(                \
-    BOOST_PP_CAT, (_impl_CO2_DISPATCH, _impl_CO2_INVOKE(                        \
-        BOOST_PP_CAT, (_impl_CO2_GET_ALLOC_, _impl_CO2_SKIP_CAPTURE x)))))      \
+#define Zz_CO2_INVOKE(f, args) f args
+#define Zz_CO2_DISPATCHZz_CO2_GET_ALLOC_ (Zz_CO2_OLD_ALLOC, ~)
+#define Zz_CO2_DISPATCH_NEW_ALLOC
+#define Zz_CO2_GET_ALLOC_new(a) _NEW_ALLOC (Zz_CO2_NEW_ALLOC, a)
+#define Zz_CO2_SKIP_CAPTURE(...)
+#define Zz_CO2_GET_ALLOC(x) BOOST_PP_EXPAND(Zz_CO2_INVOKE(                      \
+    BOOST_PP_CAT, (Zz_CO2_DISPATCH, Zz_CO2_INVOKE(                              \
+        BOOST_PP_CAT, (Zz_CO2_GET_ALLOC_, Zz_CO2_SKIP_CAPTURE x)))))            \
 /***/
 
-#define _impl_CO2_SEPARATE_ALLOC(...) (__VA_ARGS__),
-#define _impl_CO2_GET_ARGS(x) BOOST_PP_EXPAND(_impl_CO2_INVOKE(                 \
-    _impl_CO2_1ST, (_impl_CO2_SEPARATE_ALLOC x)))                               \
+#define Zz_CO2_SEPARATE_ALLOC(...) (__VA_ARGS__),
+#define Zz_CO2_GET_ARGS(x) BOOST_PP_EXPAND(Zz_CO2_INVOKE(                       \
+    Zz_CO2_1ST, (Zz_CO2_SEPARATE_ALLOC x)))                                     \
 /***/
 
 #define CO2_TEMP_SIZE(bytes) using _co2_sz = ::co2::detail::temp::adjust_size<bytes>
@@ -892,31 +892,31 @@ namespace co2 { namespace detail
     R ret_of(R(T::*)());
 }}
 #       if defined(BOOST_MSVC)
-#       define _impl_CO2_SUPPRESS_NO_DEF __pragma(warning(suppress:4822))
+#       define Zz_CO2_SUPPRESS_NO_DEF __pragma(warning(suppress:4822))
 #       else
-#       define _impl_CO2_SUPPRESS_NO_DEF
+#       define Zz_CO2_SUPPRESS_NO_DEF
 #       endif
-#   define _impl_CO2_AUTO_F(var) BOOST_PP_CAT(_co2_auto_, var)
+#   define Zz_CO2_AUTO_F(var) BOOST_PP_CAT(_co2_auto_, var)
 #   define CO2_AUTO(var, expr)                                                  \
-    _impl_CO2_SUPPRESS_NO_DEF                                                   \
-    auto _impl_CO2_AUTO_F(var)() -> std::decay_t<decltype(expr)>;               \
-    decltype(::co2::detail::ret_of(&_co2_F::_impl_CO2_AUTO_F(var))) var{expr}   \
+    Zz_CO2_SUPPRESS_NO_DEF                                                      \
+    auto Zz_CO2_AUTO_F(var)() -> std::decay_t<decltype(expr)>;                  \
+    decltype(::co2::detail::ret_of(&_co2_F::Zz_CO2_AUTO_F(var))) var{expr}      \
     /***/
 #   else
 #   define CO2_AUTO(var, expr) std::decay_t<decltype(expr)> var{expr}
 #   endif
 
-#define _impl_CO2_HEAD(R, args, alloc, ...)                                     \
+#define Zz_CO2_HEAD(R, args, alloc, ...)                                        \
 {                                                                               \
     using _co2_T = ::co2::coroutine_traits<R>;                                  \
     using _co2_P = ::co2::detail::promise_t<_co2_T>;                            \
     using _co2_C = ::co2::coroutine<_co2_P>;                                    \
-    _impl_CO2_K(args)                                                           \
-    _co2_K _co2_k = {_impl_CO2_TUPLE_FOR_EACH(_impl_CO2_FWD_PARAM, args)};      \
-    auto _co2_a(_impl_CO2_1ST alloc(_impl_CO2_2ND alloc, args));                \
+    Zz_CO2_K(args)                                                              \
+    _co2_K _co2_k = {Zz_CO2_TUPLE_FOR_EACH(Zz_CO2_FWD_PARAM, args)};            \
+    auto _co2_a(Zz_CO2_1ST alloc(Zz_CO2_2ND alloc, args));                      \
     struct _co2_F : ::co2::detail::temp::default_size, _co2_K                   \
     {                                                                           \
-        _impl_CO2_TUPLE_FOR_EACH(_impl_CO2_USE_PARAM, args)                     \
+        Zz_CO2_TUPLE_FOR_EACH(Zz_CO2_USE_PARAM, args)                           \
         __VA_ARGS__                                                             \
         _co2_F(_co2_K&& pack) : _co2_K(std::move(pack)) {}                      \
         using _co2_start = std::integral_constant<unsigned, __COUNTER__>;       \
@@ -934,11 +934,11 @@ namespace co2 { namespace detail
                 case _co2_start::value:                                         \
                     using _co2_curr_eh = ::co2::detail::sentinel;               \
                     _co2_eh = _co2_curr_eh::value;                              \
-                    _impl_CO2_SUSPEND(initial_suspend(), __COUNTER__);          \
+                    Zz_CO2_SUSPEND(initial_suspend(), __COUNTER__);             \
 /***/
 
-#define CO2_BEG(R, capture, ...) -> R _impl_CO2_HEAD(R,                         \
-    _impl_CO2_GET_ARGS(capture), _impl_CO2_GET_ALLOC(capture), __VA_ARGS__)     \
+#define CO2_BEG(R, capture, ...) -> R Zz_CO2_HEAD(R,                            \
+    Zz_CO2_GET_ARGS(capture), Zz_CO2_GET_ALLOC(capture), __VA_ARGS__)           \
 /***/
 
 #define CO2_END                                                                 \
