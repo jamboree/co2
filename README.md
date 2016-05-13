@@ -1,4 +1,4 @@
-CO2 - Coroutine II [![Try it online][badge.wandbox]](http://melpon.org/wandbox/permlink/Opk47mZ4la27xAnl)
+CO2 - Coroutine II [![Try it online][badge.wandbox]](http://melpon.org/wandbox/permlink/PdFPl5iwSw707n3n)
 ===
 
 A header-only C++ stackless coroutine emulation library, providing interface close to [N4286](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4286.pdf).
@@ -308,7 +308,7 @@ for (auto i : recursive_range(alloc, 1, 10))
 
 ### Task scheduling
 It's very easy to write a generic task that can be used with different schedulers.
-For example, a `fib` task that works with `concurrency::task_group` and `tbb::task_group` can be defined as below:
+For example, a `fib` task that works with [`concurrency::task_group`](https://msdn.microsoft.com/en-us/library/dd470722.aspx) and [`tbb::task_group`](https://software.intel.com/en-us/node/506287) can be defined as below:
 ```c++
 template<class Scheduler>
 auto fib(Scheduler& sched, int n) CO2_BEG(co2::task<int>, (sched, n),
