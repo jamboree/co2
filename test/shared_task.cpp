@@ -48,6 +48,20 @@ auto x2(co2::shared_task<int> task) CO2_BEG(co2::shared_task<int>, (task), int i
     CO2_RETURN(i * 2);
 } CO2_END
 
+auto inc(co2::shared_task<int> prev) CO2_BEG(co2::shared_task<int>, (prev),
+    int n;
+)
+{
+    CO2_AWAIT_SET(n, prev);
+    CO2_RETURN(n + 1);
+} CO2_END
+
+auto count(co2::shared_task<int> task, int& n) CO2_BEG(co2::shared_task<>, (task, n))
+{
+    CO2_AWAIT(task);
+    ++n;
+} CO2_END
+
 TEST_CASE("move check")
 {
     trigger<int> event;
@@ -143,4 +157,35 @@ TEST_CASE("cancel check")
     CHECK_THROWS_AS(child1.await_resume(), co2::task_cancelled);
     CHECK_THROWS_AS(child2.await_resume(), co2::task_cancelled);
     CHECK(terminated == 3);
+}
+
+TEST_CASE("recursion check")
+{
+    int n = 0;
+    trigger<int> event;
+    auto t = wait(event);
+    for (int i = 0; i != 65536; ++i)
+    {
+        count(t, n);
+        t = inc(t);
+    }
+    event(0);
+    REQUIRE(t);
+    REQUIRE(t.await_ready());
+    CHECK(t.await_resume() == 65536);
+    CHECK(n == 65536);
+}
+
+TEST_CASE("recursion cancel check")
+{
+    int terminated = 0;
+    trigger<int> event;
+    auto t = wait(event, terminated);
+    for (int i = 0; i != 65536; ++i)
+        t = follow(t, terminated);
+    event.cancel();
+    REQUIRE(t);
+    REQUIRE(t.await_ready());
+    CHECK_THROWS_AS(t.await_resume(), co2::task_cancelled);
+    CHECK(terminated == 65537);
 }

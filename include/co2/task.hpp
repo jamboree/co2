@@ -27,7 +27,7 @@ namespace co2 { namespace task_detail
         void finalize() noexcept
         {
             if (auto then = _then.exchange(nullptr, std::memory_order_relaxed))
-                coroutine<>{then}();
+                coroutine_descend(then);
         }
 
         bool follow(coroutine<>& cb)

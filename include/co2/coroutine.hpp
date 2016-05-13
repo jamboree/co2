@@ -198,6 +198,33 @@ namespace co2
         }
     };
 
+    inline void coroutine_descend(coroutine_handle then) noexcept
+    {
+        thread_local coroutine_handle* chain = nullptr;
+        if (chain)
+        {
+            auto& next = *chain;
+            coroutine_data(then) = next;
+            next = then;
+        }
+        else
+        {
+            chain = &then;
+            {
+                coroutine<> coro{then};
+                then = nullptr;
+                coro();
+            }
+            while (then)
+            {
+                coroutine<> coro{then};
+                then = static_cast<coroutine_handle>(coroutine_data(then));
+                coro();
+            }
+            chain = nullptr;
+        }
+    }
+
     struct coroutine<>::promise_type
     {
         bool initial_suspend() noexcept

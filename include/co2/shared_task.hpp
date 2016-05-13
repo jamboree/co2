@@ -30,9 +30,9 @@ namespace co2 { namespace task_detail
             auto next = _then.exchange(nullptr, std::memory_order_acquire);
             while (next != this)
             {
-                coroutine<> coro(static_cast<coroutine_handle>(next));
-                next = coroutine_data(coro.handle());
-                coro();
+                auto then = static_cast<coroutine_handle>(next);
+                next = coroutine_data(then);
+                coroutine_descend(then);
             }
         }
 

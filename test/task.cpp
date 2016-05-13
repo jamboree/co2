@@ -42,6 +42,14 @@ auto follow(co2::task<> task, int& terminated) CO2_BEG(co2::task<>, (task, termi
     CO2_AWAIT(task);
 } CO2_END
 
+auto inc(co2::task<int> prev) CO2_BEG(co2::task<int>, (prev),
+    int n;
+)
+{
+    CO2_AWAIT_SET(n, prev);
+    CO2_RETURN(n + 1);
+} CO2_END
+
 TEST_CASE("move check")
 {
     trigger<int> event;
@@ -104,4 +112,30 @@ TEST_CASE("cancel check")
     REQUIRE(task.await_ready());
     CHECK_THROWS_AS(task.await_resume(), co2::task_cancelled);
     CHECK(terminated == 2);
+}
+
+TEST_CASE("recursion check")
+{
+    trigger<int> event;
+    auto t = wait(event);
+    for (int i = 0; i != 65536; ++i)
+        t = inc(std::move(t));
+    event(0);
+    REQUIRE(t);
+    REQUIRE(t.await_ready());
+    CHECK(t.await_resume() == 65536);
+}
+
+TEST_CASE("recursion cancel check")
+{
+    int terminated = 0;
+    trigger<int> event;
+    auto t = wait(event, terminated);
+    for (int i = 0; i != 65536; ++i)
+        t = follow(std::move(t), terminated);
+    event.cancel();
+    REQUIRE(t);
+    REQUIRE(t.await_ready());
+    CHECK_THROWS_AS(t.await_resume(), co2::task_cancelled);
+    CHECK(terminated == 65537);
 }
