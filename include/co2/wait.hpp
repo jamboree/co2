@@ -1,5 +1,5 @@
 /*//////////////////////////////////////////////////////////////////////////////
-    Copyright (c) 2015 Jamboree
+    Copyright (c) 2015-2016 Jamboree
 
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -14,6 +14,7 @@
 #include <type_traits>
 #include <condition_variable>
 #include <co2/coroutine.hpp>
+#include <co2/detail/fixed_storage.hpp>
 
 namespace co2 { namespace wait_detail
 {
@@ -105,11 +106,14 @@ namespace co2 { namespace wait_detail
         promise_type* promise;
     };
 
-    template<class Awaitable>
-    auto run(Awaitable& a) CO2_BEG(task, (a), CO2_TEMP_SIZE(sizeof(void*));)
+    template<class Awaitable, class Alloc>
+    auto run(Awaitable& a, Alloc alloc) CO2_BEG(task, (a) new(alloc), CO2_TEMP_SIZE(0);)
     {
-        CO2_AWAIT(wrapper<Awaitable>{a});
+        CO2_YIELD_WITH([&](co2::coroutine<>& c) { return co2::await_suspend(a, c); });
     } CO2_END
+
+    using frame_storage = detail::fixed_storage<detail::frame_size<
+        task::promise_type, void*[2], detail::fixed_allocator_base, 0>>;
 }}
 
 namespace co2
@@ -120,7 +124,9 @@ namespace co2
         if (await_ready(a))
             return;
 
-        auto task(wait_detail::run(a));
+        using storage = wait_detail::frame_storage;
+        storage mem;
+        auto task(wait_detail::run(a, storage::allocator<>(mem)));
         task.promise->wait();
     }
 

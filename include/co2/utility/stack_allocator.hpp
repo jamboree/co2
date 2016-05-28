@@ -1,5 +1,5 @@
 /*//////////////////////////////////////////////////////////////////////////////
-    Copyright (c) 2015 Jamboree
+    Copyright (c) 2015-2016 Jamboree
 
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -8,7 +8,6 @@
 #define CO2_STACK_ALLOCATOR_HPP_INCLUDED
 
 #include <cstddef>
-#include <type_traits>
 
 namespace co2
 {
@@ -67,11 +66,11 @@ namespace co2
     template<std::size_t Bytes>
     struct stack_buffer : stack_manager
     {
-        stack_buffer() : stack_manager(&_buf, Bytes) {}
+        stack_buffer() : stack_manager(_data, Bytes) {}
 
     private:
 
-        std::aligned_storage_t<Bytes, alignof(std::max_align_t)> _buf;
+        alignas(std::max_align_t) char _data[Bytes];
     };
 
     template<class T = void>

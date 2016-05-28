@@ -1,5 +1,5 @@
 /*//////////////////////////////////////////////////////////////////////////////
-    Copyright (c) 2015 Jamboree
+    Copyright (c) 2015-2016 Jamboree
 
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -270,7 +270,7 @@ namespace co2 { namespace detail
     {
         struct warning;
 
-        template<std::size_t Bytes, std::size_t RefSize = 1>
+        template<std::size_t Bytes, std::size_t RefSize = 0>
         using adjust_size = std::integral_constant<std::size_t, (Bytes > RefSize ? Bytes : RefSize)>;
 
         struct default_size
@@ -420,6 +420,27 @@ namespace co2 { namespace detail
     using rebind_alloc_t =
         typename std::allocator_traits<Alloc>::template rebind_alloc<T>;
 
+    template<class F, class Alloc, std::size_t N>
+    struct frame_storage : Alloc
+    {
+        explicit frame_storage(Alloc&& alloc) : Alloc(std::move(alloc)) {}
+
+        alignas(std::max_align_t) char tmp[N];
+        storage_for<F> f;
+    };
+
+    template<class F, class Alloc>
+    struct frame_storage<F, Alloc, 0> : Alloc
+    {
+        explicit frame_storage(Alloc&& alloc) : Alloc(std::move(alloc)) {}
+
+        union
+        {
+            storage_for<F> f;
+            char tmp; // dummy
+        };
+    };
+
     template<class Promise, class F, class Alloc>
     struct frame final
       : resumable<Promise>
@@ -427,13 +448,7 @@ namespace co2 { namespace detail
         using alloc_t = rebind_alloc_t<Alloc, frame<Promise, F, Alloc>>;
         using traits = std::allocator_traits<alloc_t>;
 
-        struct memory : alloc_t
-        {
-            explicit memory(alloc_t&& alloc) : alloc_t(std::move(alloc)) {}
-
-            alignas(std::max_align_t) char tmp[F::_co2_sz::value];
-            storage_for<F> f;
-        } _mem;
+        frame_storage<F, alloc_t, F::_co2_sz::value> _mem;
 
         template<class Pack>
         static frame* create(alloc_t alloc, Pack&& pack)
@@ -484,6 +499,16 @@ namespace co2 { namespace detail
             traits::deallocate(alloc, this, 1);
         }
     };
+
+    template<class Promise, class Locals, class Alloc, std::size_t Tmp>
+    struct frame_size_helper : resumable<Promise>
+    {
+        frame_storage<Locals, Alloc, Tmp> _mem;
+    };
+
+    template<class Promise, class Locals, class Alloc, std::size_t Tmp>
+    constexpr std::size_t frame_size =
+        sizeof(frame_size_helper<Promise, Locals, Alloc, Tmp>);
 
     template<class T>
     using promise_t = typename T::promise_type;
@@ -951,6 +976,7 @@ namespace co2 { namespace detail
         (_co2_C& _co2_c, unsigned& _co2_next, unsigned& _co2_eh, void* _co2_tmp)\
         {                                                                       \
             (void)_co2_tmp;                                                     \
+            (void)_co2_sz::value;                                               \
             auto& _co2_p = _co2_c.promise();                                    \
             ::co2::detail::exception_storage _co2_ex;                           \
             _co2_try_again:                                                     \

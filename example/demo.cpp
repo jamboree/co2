@@ -1,7 +1,10 @@
 #include <iostream>
+#include <thread>
 #include <co2/coroutine.hpp>
 #include <co2/generator.hpp>
 #include <co2/recursive_generator.hpp>
+#include <co2/task.hpp>
+#include <co2/wait.hpp>
 #include <co2/utility/stack_allocator.hpp>
 
 auto coro(int i, int e) CO2_BEG(co2::coroutine<>, (i, e))
@@ -39,6 +42,18 @@ CO2_BEG(co2::recursive_generator<int>, (alloc, a, b) new(alloc),
     CO2_YIELD(recursive_range(alloc, n, b));
 } CO2_END
 
+auto stall(co2::coroutine<>& ret) CO2_BEG(co2::task<int>, (ret))
+{
+    CO2_YIELD_WITH([&](co2::coroutine<>& c) { ret = std::move(c); });
+    CO2_RETURN(0);
+} CO2_END
+    
+auto inc(co2::task<int> t) CO2_BEG(co2::task<int>, (t), int n;)
+{
+    CO2_AWAIT_SET(n, t);
+    CO2_RETURN(n + 1);
+} CO2_END
+    
 int main()
 {
     std::cout << "[coro]\n";
@@ -65,5 +80,19 @@ int main()
         std::cout << i << ", ";
     }
     std::cout << "\n------------\n";
+
+    std::cout << "[task]\n";
+    auto t = stall(c);
+    for (int i = 0; i != 65536; ++i)
+        t = inc(std::move(t));
+    std::thread thr([&c]
+    {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        c();
+    });
+    std::cout << "ans: " << co2::get(t);
+    thr.join();
+    std::cout << "\n------------\n";
+    
     return EXIT_SUCCESS;
 }
