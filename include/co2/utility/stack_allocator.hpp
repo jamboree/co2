@@ -8,25 +8,29 @@
 #define CO2_STACK_ALLOCATOR_HPP_INCLUDED
 
 #include <cstddef>
+#include <memory>
+#include <type_traits>
 
 namespace co2
 {
     struct stack_manager
     {
         stack_manager(void* data, std::size_t n) noexcept
-          : _beg(static_cast<char*>(data)), _ptr(_beg), _end(_beg + n)
+          : _beg(static_cast<char*>(data)), _ptr(_beg), _rest(n)
         {}
 
         stack_manager(stack_manager const&) = delete;
         stack_manager& operator=(stack_manager const&) = delete;
 
-        void* allocate(std::size_t n)
+        void* allocate(std::size_t n, std::size_t align)
         {
-            if (std::size_t(_end - _ptr) < n)
-                return ::operator new(n);
-            auto p = _ptr;
-            _ptr += n;
-            return p;
+            if (auto p = std::align(align, n, reinterpret_cast<void*&>(_ptr), _rest))
+            {
+                _ptr += n;
+                _rest -= n;
+                return p;
+            }
+            return ::operator new(n);
         }
 
         void deallocate(void* ptr, std::size_t n) noexcept
@@ -55,12 +59,12 @@ namespace co2
 
         bool contains(char* p) noexcept
         {
-            return _beg <= p && p < _end;
+            return _beg <= p && p < _ptr + _rest;
         }
 
         char* const _beg;
         char* _ptr;
-        char* const _end;
+        std::size_t _rest;
     };
 
     template<std::size_t Bytes>
@@ -111,7 +115,7 @@ namespace co2
 
         T* allocate(std::size_t n)
         {
-            return static_cast<T*>(_manager.allocate(n * sizeof(T)));
+            return static_cast<T*>(_manager.allocate(n * sizeof(T), alignof(T)));
         }
 
         void deallocate(T* p, std::size_t n) noexcept
