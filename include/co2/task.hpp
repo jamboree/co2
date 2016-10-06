@@ -69,8 +69,7 @@ namespace co2
                 task* that;
                 ~finalizer()
                 {
-                    that->release();
-                    that->_promise = nullptr;
+                    that->reset();
                 }
             } _{this};
             return this->_promise->get();

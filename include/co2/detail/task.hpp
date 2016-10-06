@@ -9,6 +9,7 @@
 
 #include <atomic>
 #include <co2/coroutine.hpp>
+#include <co2/utility/task_cancelled.hpp>
 #include <co2/detail/storage.hpp>
 
 namespace co2
@@ -18,8 +19,6 @@ namespace co2
 
     template<class T = void>
     struct shared_task;
-
-    struct task_cancelled {};
 }
 
 namespace co2 { namespace task_detail

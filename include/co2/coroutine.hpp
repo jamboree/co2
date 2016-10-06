@@ -196,6 +196,11 @@ namespace co2
         {
             detail::resumable<Promise>::from_promise(p)->release();
         }
+
+        static handle_type from_promise(Promise* p)
+        {
+            return detail::resumable<Promise>::from_promise(p);
+        }
     };
 
     inline void coroutine_descend(coroutine_handle then) noexcept

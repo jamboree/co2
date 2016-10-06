@@ -1,4 +1,4 @@
-CO2 - Coroutine II [![Try it online][badge.wandbox]](http://melpon.org/wandbox/permlink/qgcRg4oZ78K2mxn1)
+CO2 - Coroutine II [![Try it online][badge.wandbox]](http://melpon.org/wandbox/permlink/eBRHZc4Ruh05QVDR)
 ===
 
 A header-only C++ stackless coroutine emulation library, providing interface close to [N4286](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4286.pdf).
@@ -213,6 +213,7 @@ __Headers__
 * `#include <co2/recursive_generator.hpp>`
 * `#include <co2/task.hpp>`
 * `#include <co2/shared_task.hpp>`
+* `#include <co2/lazy_task.hpp>`
 * `#include <co2/wait.hpp>`
 * `#include <co2/adapted/boost_future.hpp>`
 * `#include <co2/adapted/boost_optional.hpp>`
@@ -244,6 +245,7 @@ __Classes__
 * `co2::recursive_generator<T>`
 * `co2::task<T>`
 * `co2::shared_task<T>`
+* `co2::lazy_task<T>`
 * `co2::suspend_always`
 * `co2::suspend_never`
 * `co2::stack_manager`
