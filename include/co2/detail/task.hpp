@@ -72,16 +72,7 @@ namespace co2 { namespace task_detail
 
         ~promise_data()
         {
-            switch (Base::_tag.load(std::memory_order_relaxed))
-            {
-            case tag::value:
-                _data.value.~val_t();
-                break;
-            case tag::exception:
-                _data.exception.~exception_ptr();
-            default:
-                break;
-            }
+            _data.destroy(Base::_tag.load(std::memory_order_relaxed));
         }
 
         detail::storage<val_t> _data;

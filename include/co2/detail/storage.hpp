@@ -9,6 +9,7 @@
 
 #include <exception>
 #include <functional>
+#include <type_traits>
 
 namespace co2 { namespace detail
 {
@@ -27,19 +28,34 @@ namespace co2 { namespace detail
     template<class T>
     using wrap_reference_t = typename wrap_reference<T>::type;
 
-    template<class T>
-    union storage
-    {
-        std::exception_ptr exception;
-        T value;
-
-        storage() {}
-        ~storage() {}
-    };
-
     enum class tag
     {
         null, value, exception, cancelled
+    };
+
+    template<class T>
+    union storage
+    {
+        char data[1];
+        T value;
+        std::exception_ptr exception;
+
+        storage() {}
+        ~storage() {}
+
+        void destroy(tag t) noexcept
+        {
+            switch (t)
+            {
+            case tag::value:
+                value.~T();
+                break;
+            case tag::exception:
+                exception.~exception_ptr();
+            default:
+                break;
+            }
+        }
     };
 }}
 

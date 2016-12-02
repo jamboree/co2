@@ -54,6 +54,11 @@ namespace co2 { namespace detail
 
             void deallocate(T*, std::size_t) noexcept {}
         };
+
+        allocator<> alloc()
+        {
+            return allocator<>(*this);
+        }
     };
 }}
 

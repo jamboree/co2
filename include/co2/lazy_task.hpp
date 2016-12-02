@@ -70,6 +70,11 @@ namespace co2 { namespace detail
             return static_cast<T&&>(_data.value);
         }
 
+        ~lazy_promise()
+        {
+            _data.destroy(_tag);
+        }
+
         storage<val_t> _data;
         tag _tag = tag::null;
     };

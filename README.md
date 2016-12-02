@@ -1,4 +1,4 @@
-CO2 - Coroutine II [![Try it online][badge.wandbox]](http://melpon.org/wandbox/permlink/eBRHZc4Ruh05QVDR)
+CO2 - Coroutine II [![Try it online][badge.wandbox]](http://melpon.org/wandbox/permlink/t2PDgsY53SZHPSHu)
 ===
 
 A header-only C++ stackless coroutine emulation library, providing interface close to [N4286](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4286.pdf).
@@ -7,10 +7,6 @@ A header-only C++ stackless coroutine emulation library, providing interface clo
 
 - C++14
 - [Boost](http://www.boost.org/)
-
-## Motivation
-
-I like the idea of `await` as proposed in N4286, and I hope it will become part of the new standard (C++17?), but as of this writing, there's no working implementation available, so I started to work out a preprocessor-based library to emulate `await` and stackless coroutine.
 
 ## Overview
 
@@ -214,7 +210,7 @@ __Headers__
 * `#include <co2/task.hpp>`
 * `#include <co2/shared_task.hpp>`
 * `#include <co2/lazy_task.hpp>`
-* `#include <co2/wait.hpp>`
+* `#include <co2/sync.hpp>`
 * `#include <co2/adapted/boost_future.hpp>`
 * `#include <co2/adapted/boost_optional.hpp>`
 * `#include <co2/utility/stack_allocator.hpp>`

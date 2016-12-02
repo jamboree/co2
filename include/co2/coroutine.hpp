@@ -735,6 +735,15 @@ BOOST_PP_IF(Zz_CO2_IS_EMPTY t, Zz_CO2_TUPLE_FOR_EACH_EMPTY,                     
     Zz_CO2_TUPLE_FOR_EACH_IMPL)(macro, t)                                       \
 /***/
 
+#   if defined(__has_cpp_attribute)
+#       if __has_cpp_attribute(fallthrough)
+#       define Zz_CO2_FALLTHROUGH [[fallthrough]];
+#       endif
+#   endif
+#   if !defined(Zz_CO2_FALLTHROUGH)
+#   define Zz_CO2_FALLTHROUGH
+#   endif
+
 #define Zz_CO2_AWAIT(ret, expr, next)                                           \
 do {                                                                            \
     using _co2_expr_t = decltype(::co2::detail::unrvref(expr));                 \
@@ -756,6 +765,7 @@ do {                                                                            
         _co2_await::reset(_co2_tmp);                                            \
         throw;                                                                  \
     }                                                                           \
+    Zz_CO2_FALLTHROUGH                                                          \
     case next:                                                                  \
     if (_co2_p.cancellation_requested())                                        \
     {                                                                           \
@@ -776,6 +786,7 @@ do {                                                                            
     ::co2::detail::suspend(&_co2_p);                                            \
     if ((f(_co2_c), ::co2::detail::void_{}) || !::co2::detail::resume(&_co2_p)) \
         return ::co2::detail::avoid_plain_return{};                             \
+    Zz_CO2_FALLTHROUGH                                                          \
     case next:                                                                  \
     if (_co2_p.cancellation_requested())                                        \
     {                                                                           \
@@ -794,6 +805,7 @@ do {                                                                            
         ::co2::detail::suspend(&_co2_p);                                        \
         return ::co2::detail::avoid_plain_return{};                             \
     }                                                                           \
+    Zz_CO2_FALLTHROUGH                                                          \
     case next:                                                                  \
     if (_co2_p.cancellation_requested())                                        \
     {                                                                           \
