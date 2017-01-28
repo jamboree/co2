@@ -210,6 +210,7 @@ __Headers__
 * `#include <co2/task.hpp>`
 * `#include <co2/shared_task.hpp>`
 * `#include <co2/lazy_task.hpp>`
+* `#include <co2/event.hpp>`
 * `#include <co2/sync.hpp>`
 * `#include <co2/adapted/boost_future.hpp>`
 * `#include <co2/adapted/boost_optional.hpp>`
@@ -242,6 +243,7 @@ __Classes__
 * `co2::task<T>`
 * `co2::shared_task<T>`
 * `co2::lazy_task<T>`
+* `co2::event`
 * `co2::suspend_always`
 * `co2::suspend_never`
 * `co2::stack_manager`
@@ -384,7 +386,7 @@ auto server(asio::io_service& io, unsigned port) CO2_BEG(co2::task<>, (io, port)
 
 ## License
 
-    Copyright (c) 2015-2016 Jamboree
+    Copyright (c) 2015-2017 Jamboree
 
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
