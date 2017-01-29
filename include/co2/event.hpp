@@ -16,16 +16,30 @@ namespace co2
     {
         std::atomic<void*> _then{this};
 
+        template<class F>
+        void flush(F f)
+        {
+            if (auto next = _then.exchange(nullptr, std::memory_order_acquire))
+            {
+                while (next != this)
+                {
+                    auto then = static_cast<coroutine_handle>(next);
+                    next = coroutine_data(then);
+                    f(then);
+                }
+            }
+        }
+
     public:
+        ~event()
+        {
+            // Destroy the pending coroutines in case that set() is not called.
+            flush([](coroutine_handle h) { coroutine<>{h}; });
+        }
+
         void set() noexcept
         {
-            auto next = _then.exchange(nullptr, std::memory_order_acquire);
-            while (next != this)
-            {
-                auto then = static_cast<coroutine_handle>(next);
-                next = coroutine_data(then);
-                coroutine<>{then}();
-            }
+            flush([](coroutine_handle h) { coroutine<>{h}(); });
         }
 
         bool await_ready() noexcept
@@ -36,8 +50,8 @@ namespace co2
         bool await_suspend(coroutine<>& cb) noexcept
         {
             auto prev = _then.load(std::memory_order_relaxed);
-            auto curr = cb.to_address();
-            auto& next = coroutine_data(cb.handle());
+            auto curr = cb.handle();
+            auto& next = coroutine_data(curr);
             while (prev)
             {
                 next = prev;
