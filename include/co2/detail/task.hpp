@@ -189,7 +189,7 @@ namespace co2 { namespace task_detail
             return _promise->_tag.load(std::memory_order_relaxed) != tag::null;
         }
 
-        bool await_suspend(coroutine<>& cb)
+        bool await_suspend(coroutine<>& cb) noexcept
         {
             return _promise->follow(cb);
         }

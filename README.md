@@ -319,7 +319,7 @@ auto fib(Scheduler& sched, int n) CO2_BEG(co2::task<int>, (sched, n),
 )
 {
     // Schedule the continuation.
-    CO2_YIELD_WITH([&](co2::coroutine<>& c) { sched.run([h = c.detach()]{ co2::coroutine<>{h}(); });
+    CO2_YIELD_WITH([&](co2::coroutine<>& c) { sched.run([h = c.detach()]{ co2::coroutine<>{h}(); }); });
     // From now on, the code is executed on the Scheduler.
     if (n >= 2)
     {

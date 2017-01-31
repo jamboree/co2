@@ -87,35 +87,36 @@ namespace co2
         a.swap(b);
     }
 
-    inline auto make_ready_task() CO2_BEG(task<>, ())
+    inline auto make_ready_task() CO2_BEG(task<>, (), CO2_TEMP_SIZE(0);)
     {
         CO2_RETURN();
     } CO2_END
 
     template<class T>
-    inline auto make_ready_task(T&& val) CO2_BEG(task<std::decay_t<T>>, (val))
+    inline auto make_ready_task(T&& val) CO2_BEG(task<std::decay_t<T>>, (val), CO2_TEMP_SIZE(0);)
     {
         CO2_RETURN(std::forward<T>(val));
     } CO2_END
 
     template<class T>
-    inline auto make_ready_task(std::reference_wrapper<T> val) CO2_BEG(task<T&>, (val))
+    inline auto make_ready_task(std::reference_wrapper<T> val) CO2_BEG(task<T&>, (val), CO2_TEMP_SIZE(0);)
     {
         CO2_RETURN(val);
     } CO2_END
 
     template<class T>
-    inline auto make_exceptional_task(std::exception_ptr ex) CO2_BEG(task<T>, (ex))
+    inline auto make_exceptional_task(std::exception_ptr ex) CO2_BEG(task<T>, (ex), CO2_TEMP_SIZE(0);)
     {
         std::rethrow_exception(std::move(ex));
     } CO2_END
 
     template<class T = void>
-    inline auto make_cancelled_task() CO2_BEG(task<T>, ())
+    inline auto make_cancelled_task() CO2_BEG(task<T>, (), CO2_TEMP_SIZE(0);)
     {
-        CO2_AWAIT(co2::suspend_always{});
+#define Zz_CO2_CANCEL_OP(coro) true // suspend
+        CO2_YIELD_WITH(Zz_CO2_CANCEL_OP);
+#undef Zz_CO2_CANCEL_OP
     } CO2_END
-
 }
 
 #endif

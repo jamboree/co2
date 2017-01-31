@@ -113,7 +113,7 @@ namespace co2 { namespace detail
 
 namespace co2
 {
-    template<class T>
+    template<class T = void>
     struct lazy_task
     {
         struct promise_type : detail::lazy_promise<T>
