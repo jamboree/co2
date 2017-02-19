@@ -109,6 +109,10 @@ Equivalent to `return await expr`.
 
 Equivalent to `f(await expr)`, where `f` can be a unary function or macro.
 
+> *Note* -
+> If your compiler supports _Statement Expression_ extension (e.g. GCC & Clang), you can use `CO2_AWAIT` as an expression.
+However, don't use more than one `CO2_AWAIT` in a single statement, and don't use it as an argument of a function in company with other arguments.
+
 * `CO2_YIELD(expr)`
 
 Equivalent to `CO2_AWAIT(<this-promise>.yield_value(expr))`, as how `yield` is defined in N4286.

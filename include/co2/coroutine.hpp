@@ -744,8 +744,23 @@ BOOST_PP_IF(Zz_CO2_IS_EMPTY t, Zz_CO2_TUPLE_FOR_EACH_EMPTY,                     
 #   define Zz_CO2_FALLTHROUGH
 #   endif
 
+// Try to detect statement expressions support.
+#   if !defined(CO2_HAS_STMT_EXPR)
+#       if defined(BOOST_GCC) | defined(BOOST_CLANG)
+#       define CO2_HAS_STMT_EXPR
+#       endif
+#   endif
+
+#   if defined(CO2_HAS_STMT_EXPR)
+#   define Zz_CO2_STMT_EXPR_BEG (
+#   define Zz_CO2_STMT_EXPR_END )
+#   else
+#   define Zz_CO2_STMT_EXPR_BEG do
+#   define Zz_CO2_STMT_EXPR_END while (false)
+#   endif
+
 #define Zz_CO2_AWAIT(ret, expr, next)                                           \
-do {                                                                            \
+Zz_CO2_STMT_EXPR_BEG {                                                          \
     using _co2_expr_t = decltype(::co2::detail::unrvref(expr));                 \
     using _co2_await = ::co2::detail::temp::traits<_co2_expr_t, _co2_sz::value>;\
     _co2_await::create(_co2_tmp, expr);                                         \
@@ -777,7 +792,7 @@ do {                                                                            
     ::co2::detail::temp::auto_reset<_co2_expr_t, _co2_sz::value>                \
         _co2_reset = {_co2_tmp};                                                \
     ret (::co2::await_resume(_co2_await::get(_co2_tmp)));                       \
-} while (false)                                                                 \
+} Zz_CO2_STMT_EXPR_END                                                          \
 /***/
 
 #define Zz_CO2_YIELD_WITH(f, next)                                              \
