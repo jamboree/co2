@@ -4,8 +4,8 @@
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //////////////////////////////////////////////////////////////////////////////*/
-#ifndef CO2_EVENT_HPP_INCLUDED
-#define CO2_EVENT_HPP_INCLUDED
+#ifndef CO2_SYNCH_EVENT_HPP_INCLUDED
+#define CO2_SYNCH_EVENT_HPP_INCLUDED
 
 #include <atomic>
 #include <co2/coroutine.hpp>

@@ -1,11 +1,11 @@
 /*//////////////////////////////////////////////////////////////////////////////
-    Copyright (c) 2015-2016 Jamboree
+    Copyright (c) 2015-2017 Jamboree
 
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //////////////////////////////////////////////////////////////////////////////*/
-#ifndef CO2_SYNC_HPP_INCLUDED
-#define CO2_SYNC_HPP_INCLUDED
+#ifndef CO2_BLOCKING_HPP_INCLUDED
+#define CO2_BLOCKING_HPP_INCLUDED
 
 #include <mutex>
 #include <thread>
@@ -17,7 +17,7 @@
 #include <co2/coroutine.hpp>
 #include <co2/detail/fixed_storage.hpp>
 
-namespace co2 { namespace wait_detail
+namespace co2 { namespace blocking_detail
 {
     struct promise_base
     {
@@ -164,9 +164,9 @@ namespace co2
         if (await_ready(a))
             return;
 
-        wait_detail::task::frame_storage mem;
-        auto task(wait_detail::task::run(a, mem.alloc()));
-        wait_detail::task::finalizer _{task.promise};
+        blocking_detail::task::frame_storage mem;
+        auto task(blocking_detail::task::run(a, mem.alloc()));
+        blocking_detail::task::finalizer _{task.promise};
         task.promise->wait();
     }
 
@@ -176,8 +176,8 @@ namespace co2
         if (await_ready(a))
             return true;
 
-        auto task(wait_detail::timed_task::run<Awaitable>(std::forward<Awaitable>(a)));
-        wait_detail::timed_task::finalizer _{task.promise};
+        auto task(blocking_detail::timed_task::run<Awaitable>(std::forward<Awaitable>(a)));
+        blocking_detail::timed_task::finalizer _{task.promise};
         return task.promise->wait_until(timeout_time);
     }
 

@@ -1,11 +1,11 @@
 /*//////////////////////////////////////////////////////////////////////////////
-    Copyright (c) 2015 Jamboree
+    Copyright (c) 2015-2017 Jamboree
 
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //////////////////////////////////////////////////////////////////////////////*/
-#ifndef CO2_NTH_READY_HPP_INCLUDED
-#define CO2_NTH_READY_HPP_INCLUDED
+#ifndef CO2_SYNC_NTH_READY_HPP_INCLUDED
+#define CO2_SYNC_NTH_READY_HPP_INCLUDED
 
 #include <tuple>
 #include <type_traits>

@@ -4,7 +4,7 @@
 #include <co2/generator.hpp>
 #include <co2/recursive_generator.hpp>
 #include <co2/task.hpp>
-#include <co2/sync.hpp>
+#include <co2/blocking.hpp>
 #include <co2/utility/stack_allocator.hpp>
 
 auto coro(int i, int e) CO2_BEG(co2::coroutine<>, (i, e))

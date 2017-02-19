@@ -403,7 +403,7 @@ namespace co2 { namespace detail
     template<class Promise>
     inline auto resume(Promise* p) -> decltype(p->resume())
     {
-        decltype(p->suspend()) is_also_required(void);
+        //decltype(p->suspend()) is_also_required(void);
         return p->resume();
     }
 
@@ -415,7 +415,7 @@ namespace co2 { namespace detail
     template<class Promise>
     inline auto suspend(Promise* p) -> decltype(p->suspend())
     {
-        decltype(p->resume()) is_also_required(void);
+        //decltype(p->resume()) is_also_required(void);
         p->suspend();
     }
 
