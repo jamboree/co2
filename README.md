@@ -216,7 +216,6 @@ __Headers__
 * `#include <co2/lazy_task.hpp>`
 * `#include <co2/sync/event.hpp>`
 * `#include <co2/sync/critical_section.hpp>`
-* `#include <co2/sync/completion_group.hpp>`
 * `#include <co2/blocking.hpp>`
 * `#include <co2/adapted/boost_future.hpp>`
 * `#include <co2/adapted/boost_optional.hpp>`
@@ -252,7 +251,6 @@ __Classes__
 * `co2::lazy_task<T>`
 * `co2::event`
 * `co2::critical_section`
-* `co2::completion_group`
 * `co2::suspend_always`
 * `co2::suspend_never`
 * `co2::stack_manager`
