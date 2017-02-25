@@ -1,5 +1,5 @@
 /*//////////////////////////////////////////////////////////////////////////////
-    Copyright (c) 2015-2016 Jamboree
+    Copyright (c) 2015-2017 Jamboree
 
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -32,7 +32,7 @@ namespace co2 { namespace task_detail
             {
                 auto then = static_cast<coroutine_handle>(next);
                 next = coroutine_data(then);
-                coroutine_descend(then);
+                coroutine_final_run(then);
             }
         }
 

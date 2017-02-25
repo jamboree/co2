@@ -1,5 +1,5 @@
 /*//////////////////////////////////////////////////////////////////////////////
-    Copyright (c) 2016 Jamboree
+    Copyright (c) 2016-2017 Jamboree
 
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -24,7 +24,7 @@ namespace co2 { namespace detail
         {
             if (_then)
             {
-                coroutine_descend(_then);
+                coroutine_final_run(_then);
                 return true;
             }
             return false;
@@ -153,7 +153,7 @@ namespace co2
         void await_suspend(coroutine<>& coro)
         {
             _promise->_then = coro.detach();
-            coroutine_descend(coroutine<promise_type>::from_promise(_promise));
+            coroutine_final_run(coroutine<promise_type>::from_promise(_promise));
         }
 
         T await_resume()
@@ -191,7 +191,7 @@ namespace co2
                 if (_promise->_then)
                     coroutine<promise_type>::destroy(_promise);
                 else
-                    coroutine_descend(coroutine<promise_type>::from_promise(_promise));
+                    coroutine_final_run(coroutine<promise_type>::from_promise(_promise));
                 _promise = nullptr;
             }
         }

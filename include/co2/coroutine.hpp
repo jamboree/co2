@@ -1,5 +1,5 @@
 /*//////////////////////////////////////////////////////////////////////////////
-    Copyright (c) 2015-2016 Jamboree
+    Copyright (c) 2015-2017 Jamboree
 
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -203,33 +203,6 @@ namespace co2
         }
     };
 
-    inline void coroutine_descend(coroutine_handle then) noexcept
-    {
-        thread_local coroutine_handle* chain = nullptr;
-        if (chain)
-        {
-            auto& next = *chain;
-            coroutine_data(then) = next;
-            next = then;
-        }
-        else
-        {
-            chain = &then;
-            {
-                coroutine<> coro{then};
-                then = nullptr;
-                coro();
-            }
-            while (then)
-            {
-                coroutine<> coro{then};
-                then = static_cast<coroutine_handle>(coroutine_data(then));
-                coro();
-            }
-            chain = nullptr;
-        }
-    }
-
     struct coroutine<>::promise_type
     {
         bool initial_suspend() noexcept
@@ -266,6 +239,47 @@ namespace co2
     inline bool operator!=(coroutine<Promise> const& lhs, coroutine<Promise> const& rhs)
     {
         return lhs.to_address() != rhs.to_address();
+    }
+
+    namespace detail
+    {
+        template<class F>
+        void coroutine_local_sched(coroutine_handle then, F f) noexcept
+        {
+            thread_local coroutine_handle* chain = nullptr;
+            if (chain)
+            {
+                auto& next = *chain;
+                coroutine_data(then) = next;
+                next = then;
+            }
+            else
+            {
+                chain = &then;
+                {
+                    coroutine<> coro{then};
+                    then = nullptr;
+                    f(coro);
+                }
+                while (then)
+                {
+                    coroutine<> coro{then};
+                    then = static_cast<coroutine_handle>(coroutine_data(then));
+                    f(coro);
+                }
+                chain = nullptr;
+            }
+        }
+    }
+
+    inline void coroutine_final_run(coroutine_handle then) noexcept
+    {
+        detail::coroutine_local_sched(then, [](coroutine<>& coro) { coro(); });
+    }
+
+    inline void coroutine_final_cancel(coroutine_handle then) noexcept
+    {
+        detail::coroutine_local_sched(then, [](coroutine<>&) {/*noop*/});
     }
 }
 

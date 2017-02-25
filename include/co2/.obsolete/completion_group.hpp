@@ -34,7 +34,7 @@ namespace co2 { namespace detail
             bool final_suspend() noexcept
             {
                 if (auto then = _then.exchange(nullptr, std::memory_order_relaxed))
-                    coroutine_descend(then);
+                    coroutine_final_run(then);
                 return true;
             }
 
