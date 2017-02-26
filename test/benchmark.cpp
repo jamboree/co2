@@ -75,7 +75,6 @@ void bench_msvc(benchmark::State& state)
 }
 
 BENCHMARK(bench_msvc);
-
 #endif
 
 BENCHMARK_MAIN();
