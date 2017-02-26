@@ -1,4 +1,4 @@
-CO2 - Coroutine II [![Try it online][badge.wandbox]](http://melpon.org/wandbox/permlink/nsQ27MKKsIv7Qdgk)
+CO2 - Coroutine II [![Try it online][badge.wandbox]](http://melpon.org/wandbox/permlink/gLID4iL6ff2FVHkY)
 ===
 
 A header-only C++ stackless coroutine emulation library, providing interface close to [N4286](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4286.pdf).
@@ -117,7 +117,7 @@ However, don't use more than one `CO2_AWAIT` in a single statement, and don't us
 
 Equivalent to `CO2_AWAIT(<this-promise>.yield_value(expr))`, as how `yield` is defined in N4286.
 
-* `CO2_YIELD_WITH(fn)`
+* `CO2_SUSPEND(fn)`
 
 Suspend the coroutine with the callable object `fn`. This signature of `fn` is the same as `await_suspend`.
 
@@ -230,7 +230,7 @@ __Macros__
 * `CO2_AWAIT_RETURN`
 * `CO2_AWAIT_APPLY`
 * `CO2_YIELD`
-* `CO2_YIELD_WITH`
+* `CO2_SUSPEND`
 * `CO2_RETURN`
 * `CO2_RETURN_FROM`
 * `CO2_RETURN_LOCAL`
@@ -323,7 +323,7 @@ auto fib(Scheduler& sched, int n) CO2_BEG(co2::task<int>, (sched, n),
 )
 {
     // Schedule the continuation.
-    CO2_YIELD_WITH([&](co2::coroutine<>& c) { sched.run([h = c.detach()]{ co2::coroutine<>{h}(); }); });
+    CO2_SUSPEND([&](co2::coroutine<>& c) { sched.run([h = c.detach()]{ co2::coroutine<>{h}(); }); });
     // From now on, the code is executed on the Scheduler.
     if (n >= 2)
     {
@@ -390,6 +390,22 @@ auto server(asio::io_service& io, unsigned port) CO2_BEG(co2::task<>, (io, port)
         CO2_AWAIT_APPLY(session, act::accept(acceptor));
 } CO2_END
 ```
+
+## Performance
+The overhead of context-switch. See [benchmark.cpp](test/benchmark.cpp).
+
+Sample run (VS2015 Update 3, boost 1.63.0, 64-bit release build):
+```
+Run on (4 X 3200 MHz CPU s)
+Benchmark                  Time           CPU Iterations
+--------------------------------------------------------
+bench_coroutine2         82 ns         80 ns    8960000
+bench_co2                  6 ns          6 ns  112000000
+bench_msvc                 5 ns          5 ns  112000000
+```
+Lower is better.
+
+![benchmark](doc/benchmark.png?raw=true)
 
 ## License
 

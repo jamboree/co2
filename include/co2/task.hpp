@@ -114,7 +114,7 @@ namespace co2
     inline auto make_cancelled_task() CO2_BEG(task<T>, (), CO2_TEMP_SIZE(0);)
     {
 #define Zz_CO2_CANCEL_OP(coro) true // suspend
-        CO2_YIELD_WITH(Zz_CO2_CANCEL_OP);
+        CO2_SUSPEND(Zz_CO2_CANCEL_OP);
 #undef Zz_CO2_CANCEL_OP
     } CO2_END
 }

@@ -1,5 +1,5 @@
 /*//////////////////////////////////////////////////////////////////////////////
-    Copyright (c) 2015 Jamboree
+    Copyright (c) 2015-2017 Jamboree
 
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -34,14 +34,6 @@ namespace co2 { namespace boost_optional_detail
 
         optional<T> get_return_object(coroutine<promise>& coro)
         {
-            struct finalize
-            {
-                promise* that;
-                ~finalize()
-                {
-                    coroutine<promise>::destroy(that);
-                }
-            } _{this};
             coro.resume();
             return std::move(_ret);
         }

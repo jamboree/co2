@@ -44,7 +44,7 @@ CO2_BEG(co2::recursive_generator<int>, (alloc, a, b) new(alloc),
 
 auto stall(co2::coroutine<>& ret) CO2_BEG(co2::task<int>, (ret))
 {
-    CO2_YIELD_WITH([&](co2::coroutine<>& c) { ret = std::move(c); });
+    CO2_SUSPEND([&](co2::coroutine<>& c) { ret = std::move(c); });
     CO2_RETURN(0);
 } CO2_END
     

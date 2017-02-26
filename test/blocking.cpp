@@ -6,7 +6,7 @@
 //////////////////////////////////////////////////////////////////////////////*/
 #define CATCH_CONFIG_MAIN
 #include <catch.hpp>
-#include <co2/sync.hpp>
+#include <co2/blocking.hpp>
 #include "common.hpp"
 
 struct pitcher

@@ -294,7 +294,7 @@ namespace co2 { namespace detail
 
         struct default_size
         {
-            using _co2_sz = std::integral_constant<std::size_t, (sizeof(void*) + sizeof(int)) * 2>;
+            using _co2_sz = std::integral_constant<std::size_t, sizeof(void*) * 4>;
         };
 
         template<class T, bool NeedsAlloc>
@@ -417,7 +417,7 @@ namespace co2 { namespace detail
     template<class Promise>
     inline auto resume(Promise* p) -> decltype(p->resume())
     {
-        //decltype(p->suspend()) is_also_required(void);
+        decltype(p->suspend()) is_also_required(void);
         return p->resume();
     }
 
@@ -429,7 +429,7 @@ namespace co2 { namespace detail
     template<class Promise>
     inline auto suspend(Promise* p) -> decltype(p->suspend())
     {
-        //decltype(p->resume()) is_also_required(void);
+        decltype(p->resume()) is_also_required(void);
         p->suspend();
     }
 
@@ -809,7 +809,7 @@ Zz_CO2_STMT_EXPR_BEG {                                                          
 } Zz_CO2_STMT_EXPR_END                                                          \
 /***/
 
-#define Zz_CO2_YIELD_WITH(f, next)                                              \
+#define Zz_CO2_SUSPEND(f, next)                                                 \
 do {                                                                            \
     _co2_next = next;                                                           \
     ::co2::detail::suspend(&_co2_p);                                            \
@@ -826,7 +826,7 @@ do {                                                                            
 } while (false)                                                                 \
 /***/
 
-#define Zz_CO2_SUSPEND(expr, next)                                              \
+#define Zz_CO2_SUSPEND_IF(expr, next)                                           \
 {                                                                               \
     if (_co2_p.expr)                                                            \
     {                                                                           \
@@ -854,7 +854,7 @@ Zz_CO2_AWAIT(([this](let) __VA_ARGS__), expr, __COUNTER__)                      
 
 #define CO2_YIELD(...) CO2_AWAIT(_co2_p.yield_value(__VA_ARGS__))
 
-#define CO2_YIELD_WITH(f) Zz_CO2_YIELD_WITH(f, __COUNTER__)
+#define CO2_SUSPEND(f) Zz_CO2_SUSPEND(f, __COUNTER__)
 
 #define CO2_RETURN(...)                                                         \
 do {                                                                            \
@@ -1033,7 +1033,7 @@ namespace co2 { namespace detail
                 case _co2_start::value:                                         \
                     using _co2_curr_eh = ::co2::detail::sentinel;               \
                     _co2_eh = _co2_curr_eh::value;                              \
-                    Zz_CO2_SUSPEND(initial_suspend(), __COUNTER__);             \
+                    Zz_CO2_SUSPEND_IF(initial_suspend(), __COUNTER__);          \
 /***/
 
 #define CO2_BEG(R, capture, ...) -> R Zz_CO2_HEAD(R,                            \

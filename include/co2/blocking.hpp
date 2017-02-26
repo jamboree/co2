@@ -90,7 +90,7 @@ namespace co2 { namespace blocking_detail
         template<class Awaitable, class Alloc>
         static auto run(Awaitable& a, Alloc alloc) CO2_BEG(task, (a) new(alloc), CO2_TEMP_SIZE(0);)
         {
-            CO2_YIELD_WITH([&](co2::coroutine<>& c) { return co2::await_suspend(a, c); });
+            CO2_SUSPEND([&](co2::coroutine<>& c) { return co2::await_suspend(a, c); });
         } CO2_END
             
         using frame_storage = detail::fixed_storage<detail::frame_size<
@@ -149,7 +149,7 @@ namespace co2 { namespace blocking_detail
         template<class Awaitable>
         static auto run(Awaitable a) CO2_BEG(timed_task, (a), CO2_TEMP_SIZE(0);)
         {
-            CO2_YIELD_WITH([&](co2::coroutine<>& c) { return co2::await_suspend(a, c); });
+            CO2_SUSPEND([&](co2::coroutine<>& c) { return co2::await_suspend(a, c); });
         } CO2_END
 
         promise_type* promise;

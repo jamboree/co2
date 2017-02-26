@@ -64,7 +64,7 @@ namespace co2
 do                                                                              \
 {                                                                               \
     if (!cs.enter())                                                            \
-        CO2_YIELD_WITH(cs.do_suspend);                                          \
+        CO2_SUSPEND(cs.do_suspend);                                          \
     ::co2::critical_section::leave_guard _{cs};                                 \
     __VA_ARGS__                                                                 \
 } while (false)                                                                 \
