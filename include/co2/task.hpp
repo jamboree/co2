@@ -15,7 +15,7 @@ namespace co2 { namespace task_detail
 {
     struct unique_promise_base : promise_base
     {
-        std::atomic<coroutine_handle> _then {nullptr};
+        std::atomic<void*> _then {this};
         std::atomic<tag> _tag {tag::null};
         std::atomic_flag _last_owner = ATOMIC_FLAG_INIT;
 
@@ -26,20 +26,20 @@ namespace co2 { namespace task_detail
 
         void finalize() noexcept
         {
-            if (auto then = _then.exchange(nullptr, std::memory_order_relaxed))
-                coroutine_final_run(then);
+            auto then = _then.exchange(nullptr, std::memory_order_relaxed);
+            if (then != this)
+                coroutine_final_run(static_cast<coroutine_handle>(then));
         }
 
         bool follow(coroutine<>& cb)
         {
-            auto old = _then.exchange(cb.handle(), std::memory_order_relaxed);
-            BOOST_ASSERT_MSG(!old, "multiple coroutines await on same task");
-            if (_tag.load(std::memory_order_relaxed) == tag::null
-                || !_then.exchange(nullptr, std::memory_order_relaxed))
+            void* sentinel = this;
+            if (_then.compare_exchange_strong(sentinel, cb.handle(), std::memory_order_relaxed))
             {
                 cb.detach();
                 return true;
             }
+            BOOST_ASSERT_MSG(!sentinel, "multiple coroutines await on same task");
             return false;
         }
     };

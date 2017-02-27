@@ -46,13 +46,8 @@ namespace co2 { namespace task_detail
                 next = prev;
                 if (_then.compare_exchange_weak(prev, curr, std::memory_order_release))
                 {
-                    if (_tag.load(std::memory_order_relaxed) == tag::null
-                        || !_then.compare_exchange_strong(curr, prev, std::memory_order_relaxed))
-                    {
-                        cb.detach();
-                        return true;
-                    }
-                    break;
+                    cb.detach();
+                    return true;
                 }
             }
             return false;
