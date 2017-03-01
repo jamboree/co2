@@ -415,25 +415,43 @@ namespace co2 { namespace detail
     using sentinel = std::integral_constant<unsigned, ~1u>;
 
     template<class Promise>
-    inline auto resume(Promise* p) -> decltype(p->resume())
+    inline auto try_suspend(Promise* p) -> decltype(p->try_suspend())
     {
-        decltype(p->suspend()) is_also_required(void);
-        return p->resume();
+        decltype(p->try_resume()) is_also_required(void);
+        decltype(p->try_cancel()) is_also_required(void);
+        return p->try_suspend();
     }
 
-    constexpr bool resume(void*)
+    inline std::true_type try_suspend(void*) noexcept
     {
-        return true;
+        return {};
     }
 
     template<class Promise>
-    inline auto suspend(Promise* p) -> decltype(p->suspend())
+    inline auto try_resume(Promise* p) -> decltype(p->try_resume())
     {
-        decltype(p->resume()) is_also_required(void);
-        p->suspend();
+        decltype(p->try_suspend()) is_also_required(void);
+        decltype(p->try_cancel()) is_also_required(void);
+        return p->try_resume();
     }
 
-    inline void suspend(void*) {}
+    inline std::true_type try_resume(void*) noexcept
+    {
+        return {};
+    }
+
+    template<class Promise>
+    inline auto try_cancel(Promise* p) -> decltype(p->try_cancel())
+    {
+        decltype(p->try_suspend()) is_also_required(void);
+        decltype(p->try_resume()) is_also_required(void);
+        return p->try_cancel();
+    }
+
+    inline std::true_type try_cancel(void*) noexcept
+    {
+        return {};
+    }
 
     template<class Alloc, class T>
     using rebind_alloc_t =
@@ -493,7 +511,7 @@ namespace co2 { namespace detail
 
         void run(coroutine<>& coro) override
         {
-            if (detail::resume(&this->promise()))
+            if (detail::try_resume(&this->promise()))
             {
                 reinterpret_cast<F&>(_mem.f)
                 (static_cast<coroutine<Promise>&>(coro), this->_next, this->_eh, &_mem.tmp);
@@ -504,7 +522,7 @@ namespace co2 { namespace detail
 
         void unwind(coroutine<>& coro) override
         {
-            if (detail::resume(&this->promise()))
+            if (detail::try_cancel(&this->promise()))
             {
                 reinterpret_cast<F&>(_mem.f)
                 (static_cast<coroutine<Promise>&>(coro), ++this->_next, this->_eh, &_mem.tmp);
@@ -783,10 +801,16 @@ Zz_CO2_STMT_EXPR_BEG {                                                          
         if (!::co2::await_ready(_co2_await::get(_co2_tmp)))                     \
         {                                                                       \
             _co2_next = next;                                                   \
-            ::co2::detail::suspend(&_co2_p);                                    \
+            if (!::co2::detail::try_suspend(&_co2_p))                           \
+                goto BOOST_PP_CAT(_co2_cancel_, next);                          \
             if ((::co2::await_suspend(_co2_await::get(_co2_tmp), _co2_c),       \
-                ::co2::detail::void_{}) || !::co2::detail::resume(&_co2_p))     \
+                ::co2::detail::void_{}))                                        \
                 return ::co2::detail::avoid_plain_return{};                     \
+            else if (!::co2::detail::try_resume(&_co2_p))                       \
+            {                                                                   \
+                _co2_c.detach();                                                \
+                return ::co2::detail::avoid_plain_return{};                     \
+            }                                                                   \
         }                                                                       \
     }                                                                           \
     catch (...)                                                                 \
@@ -799,6 +823,7 @@ Zz_CO2_STMT_EXPR_BEG {                                                          
     if (_co2_p.cancellation_requested())                                        \
     {                                                                           \
         case __COUNTER__:                                                       \
+        BOOST_PP_CAT(_co2_cancel_, next):                                       \
         _co2_await::reset(_co2_tmp);                                            \
         ::co2::detail::cancel(&_co2_p);                                         \
         goto _co2_finalize;                                                     \
@@ -812,14 +837,21 @@ Zz_CO2_STMT_EXPR_BEG {                                                          
 #define Zz_CO2_SUSPEND(f, next)                                                 \
 do {                                                                            \
     _co2_next = next;                                                           \
-    ::co2::detail::suspend(&_co2_p);                                            \
-    if ((f(_co2_c), ::co2::detail::void_{}) || !::co2::detail::resume(&_co2_p)) \
+    if (!::co2::detail::try_suspend(&_co2_p))                                   \
+        goto BOOST_PP_CAT(_co2_cancel_, next);                                  \
+    if ((f(_co2_c), ::co2::detail::void_{}))                                    \
         return ::co2::detail::avoid_plain_return{};                             \
+    else if (!::co2::detail::try_resume(&_co2_p))                               \
+    {                                                                           \
+        _co2_c.detach();                                                        \
+        return ::co2::detail::avoid_plain_return{};                             \
+    }                                                                           \
     Zz_CO2_FALLTHROUGH                                                          \
     case next:                                                                  \
     if (_co2_p.cancellation_requested())                                        \
     {                                                                           \
         case __COUNTER__:                                                       \
+        BOOST_PP_CAT(_co2_cancel_, next):                                       \
         ::co2::detail::cancel(&_co2_p);                                         \
         goto _co2_finalize;                                                     \
     }                                                                           \
@@ -831,7 +863,8 @@ do {                                                                            
     if (_co2_p.expr)                                                            \
     {                                                                           \
         _co2_next = next;                                                       \
-        ::co2::detail::suspend(&_co2_p);                                        \
+        if (!::co2::detail::try_suspend(&_co2_p))                               \
+            goto BOOST_PP_CAT(_co2_cancel_, next);                              \
         return ::co2::detail::avoid_plain_return{};                             \
     }                                                                           \
     Zz_CO2_FALLTHROUGH                                                          \
@@ -839,6 +872,7 @@ do {                                                                            
     if (_co2_p.cancellation_requested())                                        \
     {                                                                           \
         case __COUNTER__:                                                       \
+        BOOST_PP_CAT(_co2_cancel_, next):                                       \
         ::co2::detail::cancel(&_co2_p);                                         \
         goto _co2_finalize;                                                     \
     }                                                                           \

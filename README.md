@@ -1,4 +1,4 @@
-CO2 - Coroutine II [![Try it online][badge.wandbox]](http://melpon.org/wandbox/permlink/gLID4iL6ff2FVHkY)
+CO2 - Coroutine II [![Try it online][badge.wandbox]](http://melpon.org/wandbox/permlink/jde0mfb46s5MVqLh)
 ===
 
 A header-only C++ stackless coroutine emulation library, providing interface close to [N4286](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4286.pdf).
@@ -197,13 +197,18 @@ Note that `break` is still needed if you don't want the control flow to go throu
 
 This allows you specify the behavior of the coroutine when it is cancelled (i.e. when `cancellation_requested()` returns true or coroutine is reset).
 
-* `bool resume()`
+* `bool try_suspend()`
 
-This is called before the coroutine is resumed, if it returns `false`, the coroutine won't be resumed, instead, the coroutine will be detached.
+This is called before the coroutine is suspended, if it returns `false`, the coroutine won't be suspended, instead, it will be cancelled.
+However, it won't be called for `final_suspend`.
 
-* `void suspend()`
+* `bool try_resume()`
 
-This is called before the coroutine is gonna be suspended, however, it won't be called for `final_suspend`.
+This is called before the coroutine is resumed, if it returns `false`, the coroutine won't be resumed, instead, it will be detached.
+
+* `bool try_cancel()`
+
+This is called before the coroutine is reset, if it returns `false`, the coroutine won't be cancelled, instead, it will be detached.
 
 ## Reference
 
