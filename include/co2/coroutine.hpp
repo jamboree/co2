@@ -414,6 +414,27 @@ namespace co2 { namespace detail
 
     using sentinel = std::integral_constant<unsigned, ~1u>;
 
+    template<class Promise>
+    inline auto resume(Promise* p) -> decltype(p->resume())
+    {
+        decltype(p->suspend()) is_also_required(void);
+        return p->resume();
+    }
+
+    constexpr bool resume(void*)
+    {
+        return true;
+    }
+
+    template<class Promise>
+    inline auto suspend(Promise* p) -> decltype(p->suspend())
+    {
+        decltype(p->resume()) is_also_required(void);
+        p->suspend();
+    }
+
+    inline void suspend(void*) {}
+
     template<class Alloc, class T>
     using rebind_alloc_t =
         typename std::allocator_traits<Alloc>::template rebind_alloc<T>;
@@ -472,14 +493,22 @@ namespace co2 { namespace detail
 
         void run(coroutine<>& coro) override
         {
-            reinterpret_cast<F&>(_mem.f)
-            (static_cast<coroutine<Promise>&>(coro), this->_next, this->_eh, &_mem.tmp);
+            if (detail::resume(&this->promise()))
+            {
+                reinterpret_cast<F&>(_mem.f)
+                (static_cast<coroutine<Promise>&>(coro), this->_next, this->_eh, &_mem.tmp);
+            }
+            else
+                coro.detach();
         }
 
         void unwind(coroutine<>& coro) override
         {
-            reinterpret_cast<F&>(_mem.f)
-            (static_cast<coroutine<Promise>&>(coro), ++this->_next, this->_eh, &_mem.tmp);
+            if (detail::resume(&this->promise()))
+            {
+                reinterpret_cast<F&>(_mem.f)
+                (static_cast<coroutine<Promise>&>(coro), ++this->_next, this->_eh, &_mem.tmp);
+            }
         }
 
         void release() noexcept override
@@ -754,8 +783,9 @@ Zz_CO2_STMT_EXPR_BEG {                                                          
         if (!::co2::await_ready(_co2_await::get(_co2_tmp)))                     \
         {                                                                       \
             _co2_next = next;                                                   \
+            ::co2::detail::suspend(&_co2_p);                                    \
             if ((::co2::await_suspend(_co2_await::get(_co2_tmp), _co2_c),       \
-                ::co2::detail::void_{}))                                        \
+                ::co2::detail::void_{}) || !::co2::detail::resume(&_co2_p))     \
                 return ::co2::detail::avoid_plain_return{};                     \
         }                                                                       \
     }                                                                           \
@@ -782,7 +812,8 @@ Zz_CO2_STMT_EXPR_BEG {                                                          
 #define Zz_CO2_SUSPEND(f, next)                                                 \
 do {                                                                            \
     _co2_next = next;                                                           \
-    if ((f(_co2_c), ::co2::detail::void_{}))                                    \
+    ::co2::detail::suspend(&_co2_p);                                            \
+    if ((f(_co2_c), ::co2::detail::void_{}) || !::co2::detail::resume(&_co2_p)) \
         return ::co2::detail::avoid_plain_return{};                             \
     Zz_CO2_FALLTHROUGH                                                          \
     case next:                                                                  \
@@ -800,6 +831,7 @@ do {                                                                            
     if (_co2_p.expr)                                                            \
     {                                                                           \
         _co2_next = next;                                                       \
+        ::co2::detail::suspend(&_co2_p);                                        \
         return ::co2::detail::avoid_plain_return{};                             \
     }                                                                           \
     Zz_CO2_FALLTHROUGH                                                          \
