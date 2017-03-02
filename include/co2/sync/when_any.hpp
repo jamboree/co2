@@ -139,52 +139,51 @@ namespace co2
                 return std::move_iterator<It>(it);
             }
         };
+
+        template<class Sequence, class F>
+        task<when_any_result<Sequence>> when_any_impl(F&& f)
+        {
+            auto state = std::make_shared<when_any_state<Sequence>>();
+            auto ret(when_any_state<Sequence>::make_task(*state));
+            if (const std::size_t n = f(state->result.futures))
+            {
+                for (std::size_t i = 0; i != n; ++i)
+                {
+                    wait_any_at(i, state);
+                    if (!state->coro.load(std::memory_order_relaxed))
+                        break;
+                }
+            }
+            else
+                state->set_ready(std::size_t(-1));
+            return ret;
+        }
     }
 
     template<class InputIt>
-    auto when_any(InputIt first, InputIt last) ->
+    inline auto when_any(InputIt first, InputIt last) ->
         task<when_any_result<std::vector<typename std::iterator_traits<InputIt>::value_type>>>
     {
         using task_t = typename std::iterator_traits<InputIt>::value_type;
         using seq_t = std::vector<task_t>;
-        auto state = std::make_shared<detail::when_any_state<seq_t>>();
-        auto ret(detail::when_any_state<seq_t>::make_task(*state));
-        using iter = detail::copy_or_move_iter<InputIt, std::is_copy_constructible<task_t>::value>;
-        state->result.futures.assign(iter::wrap(first), iter::wrap(last));
-        if (std::size_t n = state->result.futures.size())
+        return detail::when_any_impl<seq_t>([&](seq_t& seq)
         {
-            for (std::size_t i = 0; i != n; ++i)
-            {
-                detail::wait_any_at(i, state);
-                if (!state->coro.load(std::memory_order_relaxed))
-                    break;
-            }
-        }
-        else
-            state->set_ready(std::size_t(-1));
-        return ret;
+            using iter = detail::copy_or_move_iter<InputIt, std::is_copy_constructible<task_t>::value>;
+            seq.assign(iter::wrap(first), iter::wrap(last));
+            return seq.size();
+        });
     }
 
     template<class... Futures>
-    auto when_any(Futures&&... futures) ->
+    inline auto when_any(Futures&&... futures) ->
         task<when_any_result<std::tuple<std::decay_t<Futures>...>>>
     {
         using seq_t = std::tuple<std::decay_t<Futures>...>;
-        auto state = std::make_shared<detail::when_any_state<seq_t>>();
-        auto ret(detail::when_any_state<seq_t>::make_task(*state));
-        state->result.futures = std::forward_as_tuple(std::forward<Futures>(futures)...);
-        if (constexpr std::size_t n = sizeof...(Futures))
+        return detail::when_any_impl<seq_t>([&](seq_t& seq)
         {
-            for (std::size_t i = 0; i != n; ++i)
-            {
-                detail::wait_any_at(i, state);
-                if (!state->coro.load(std::memory_order_relaxed))
-                    break;
-            }
-        }
-        else
-            state->set_ready(std::size_t(-1));
-        return ret;
+            seq = std::forward_as_tuple(std::forward<Futures>(futures)...);
+            return std::tuple_size<seq_t>{};
+        });
     }
 }
 
