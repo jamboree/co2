@@ -33,13 +33,24 @@ namespace co2 { namespace task_detail
 
         bool follow(coroutine<>& cb)
         {
-            void* sentinel = this;
-            if (_then.compare_exchange_strong(sentinel, cb.handle(), std::memory_order_relaxed))
+            void* last = this;
+            if (_then.compare_exchange_strong(last, cb.handle(), std::memory_order_relaxed))
             {
                 cb.detach();
                 return true;
             }
-            BOOST_ASSERT_MSG(!sentinel, "multiple coroutines await on same task");
+            // If there's a previous waiter, just cancel it because it's only
+            // allowed for when_any.
+            if (last)
+            {
+                if (_then.compare_exchange_strong(last, cb.handle(), std::memory_order_relaxed))
+                {
+                    coroutine<>{static_cast<coroutine_handle>(last)};
+                    cb.detach();
+                    return true;
+                }
+                BOOST_ASSERT_MSG(!last, "multiple coroutines await on same task");
+            }
             return false;
         }
     };
