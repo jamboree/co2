@@ -75,6 +75,26 @@ namespace co2
                 return static_cast<resumable*>(p);
             }
         };
+
+        struct trivial_promise_base
+        {
+            bool initial_suspend() noexcept
+            {
+                return false;
+            }
+
+            bool final_suspend() noexcept
+            {
+                return false;
+            }
+
+            bool cancellation_requested() const noexcept
+            {
+                return false;
+            }
+
+            void set_result() noexcept {}
+        };
     }
 
     using coroutine_handle = detail::resumable_base*;
@@ -203,30 +223,27 @@ namespace co2
         }
     };
 
-    struct coroutine<>::promise_type
+    struct coroutine<>::promise_type : detail::trivial_promise_base
     {
-        bool initial_suspend() noexcept
-        {
-            return false;
-        }
-
-        bool final_suspend() noexcept
-        {
-            return false;
-        }
-
-        bool cancellation_requested() const noexcept
-        {
-            return false;
-        }
-
         coroutine<promise_type> get_return_object(coroutine<promise_type>& coro)
         {
             coro.resume();
             return std::move(coro);
         }
+    };
 
-        void set_result() noexcept {}
+    template<>
+    struct coroutine_traits<void>
+    {
+        struct promise_type : detail::trivial_promise_base
+        {
+            void get_return_object(coroutine<promise_type>& coro)
+            {
+                coro();
+            }
+
+            void set_exception(std::exception_ptr const&) noexcept {}
+        };
     };
 
     template<class Promise>
