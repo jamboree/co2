@@ -1,4 +1,4 @@
-CO2 - Coroutine II [![Try it online][badge.wandbox]](http://melpon.org/wandbox/permlink/jde0mfb46s5MVqLh)
+CO2 - Coroutine II [![Try it online][badge.wandbox]](http://melpon.org/wandbox/permlink/oEMaXDaE7pXlcysT)
 ===
 
 A header-only C++ stackless coroutine emulation library, providing interface close to [N4286](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4286.pdf).
@@ -221,6 +221,8 @@ __Headers__
 * `#include <co2/lazy_task.hpp>`
 * `#include <co2/sync/event.hpp>`
 * `#include <co2/sync/critical_section.hpp>`
+* `#include <co2/sync/when_all.hpp>`
+* `#include <co2/sync/when_any.hpp>`
 * `#include <co2/blocking.hpp>`
 * `#include <co2/adapted/boost_future.hpp>`
 * `#include <co2/adapted/boost_optional.hpp>`
@@ -362,7 +364,7 @@ sched.wait();
 This example uses the sister library [act](https://github.com/jamboree/act) to change ASIO style callback into await.
 
 ```c++
-auto session(asio::ip::tcp::socket sock) CO2_BEG(co2::task<>, (sock),
+auto session(asio::ip::tcp::socket sock) CO2_BEG(void, (sock),
     char buf[1024];
     std::size_t len;
     act::error_code ec;
@@ -385,7 +387,7 @@ auto session(asio::ip::tcp::socket sock) CO2_BEG(co2::task<>, (sock),
     }
 } CO2_END
 
-auto server(asio::io_service& io, unsigned port) CO2_BEG(co2::task<>, (io, port),
+auto server(asio::io_service& io, unsigned port) CO2_BEG(void, (io, port),
     asio::ip::tcp::endpoint endpoint{asio::ip::tcp::v4(), port};
     asio::ip::tcp::acceptor acceptor{io, endpoint};
 )
