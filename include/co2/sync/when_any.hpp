@@ -7,11 +7,12 @@
 #ifndef CO2_SYNC_WHEN_ANY_HPP_INCLUDED
 #define CO2_SYNC_WHEN_ANY_HPP_INCLUDED
 
+#include <tuple>
 #include <atomic>
 #include <vector>
 #include <memory>
-#include <iterator>
-#include <co2/coroutine.hpp>
+#include <co2/task.hpp>
+#include <co2/detail/copy_or_move.hpp>
 
 namespace co2
 { 
@@ -24,79 +25,49 @@ namespace co2
 
     namespace detail
     {
-        template<class Tuple>
-        struct await_table_t
-        {
-            static constexpr std::size_t size = std::tuple_size<Tuple>::value;
-
-            template<std::size_t N>
-            static bool ready_fn(Tuple& t)
-            {
-                return co2::await_ready(std::get<N>(t));
-            }
-
-            template<std::size_t N>
-            static bool suspend_fn(Tuple& t, coroutine<>& coro)
-            {
-                return co2::await_suspend(std::get<N>(t), coro);
-            }
-
-            template<std::size_t... N>
-            constexpr await_table_t(std::index_sequence<N...> = {})
-              : ready{ready_fn<N>...}
-              , suspend{suspend_fn<N>...}
-            {}
-
-            bool(*ready[size])(Tuple& t);
-            bool(*suspend[size])(Tuple& t, coroutine<>& coro);
-        };
-
-        template<class Tuple>
-        constexpr await_table_t<Tuple> await_table = {};
-
-        template<class T>
-        inline bool ready_at(std::vector<T>& futures, std::size_t i)
-        {
-            return futures[i].await_ready();
-        }
-
-        template<class T>
-        inline bool suspend_at(std::vector<T>& futures, std::size_t i, coroutine<>& coro)
-        {
-            return futures[i].await_suspend(coro);
-        }
-
-        template<class... T>
-        inline bool ready_at(std::tuple<T...>& futures, std::size_t i)
-        {
-            return await_table<std::tuple<T...>>.ready[i](futures);
-        }
-
-        template<class... T>
-        inline bool suspend_at(std::tuple<T...>& futures, std::size_t i, coroutine<>& coro)
-        {
-            return await_table<std::tuple<T...>>.suspend[i](futures, coro);
-        }
-
         template<class State>
         auto wait_any_at(std::size_t i, std::shared_ptr<State> state)
         CO2_BEG(void, (i, state), CO2_TEMP_SIZE(0);)
         {
-            if (!ready_at(state->result.futures, i))
+            if (!state->result.futures[i].await_ready())
             {
                 CO2_SUSPEND([&](coroutine<>& coro)
                 {
-                    return suspend_at(state->result.futures, i, coro);
+                    return state->result.futures[i].await_suspend(coro);
                 });
             }
             state->set_ready(i);
+        } CO2_END
+            
+        template<std::size_t I, class State>
+        auto wait_any_at(std::integral_constant<std::size_t, I>, std::shared_ptr<State> state)
+        CO2_BEG(void, (state), CO2_TEMP_SIZE(0);)
+        {
+            if (!std::get<I>(state->result.futures).await_ready())
+            {
+                CO2_SUSPEND([&](coroutine<>& coro)
+                {
+                    return std::get<I>(state->result.futures).await_suspend(coro);
+                });
+            }
+            state->set_ready(I);
         } CO2_END
 
         template<class Sequence>
         struct when_any_state
         {
-            when_any_result<Sequence> result;
             std::atomic<coroutine_handle> coro;
+            when_any_result<Sequence> result;
+
+            template<class... T>
+            when_any_state(bool/*dummy*/, T&&... t)
+              : coro{nullptr}, result{0, {std::forward<T>(t)...}}
+            {}
+
+            ~when_any_state()
+            {
+                coroutine<>{coro.load(std::memory_order_relaxed)};
+            }
 
             void set_ready(std::size_t i)
             {
@@ -107,12 +78,8 @@ namespace co2
                 }
             }
 
-            ~when_any_state()
-            {
-                coroutine<>{coro.load(std::memory_order_relaxed)};
-            }
-
-            static auto make_task(when_any_state& state) CO2_BEG(task<when_any_result<Sequence>>, (state))
+            static auto make_task(when_any_state& state)
+            CO2_BEG(task<when_any_result<Sequence>>, (state), CO2_TEMP_SIZE(0);)
             {
                 CO2_SUSPEND([&](coroutine<>& coro)
                 {
@@ -122,68 +89,56 @@ namespace co2
             } CO2_END
         };
 
-        template<class It, bool copy>
-        struct copy_or_move_iter
+        template<class State>
+        inline void wait_any_each(State const& state, std::integral_constant<std::size_t, 0>, std::integral_constant<std::size_t, 0>)
         {
-            static It const& wrap(It const& it)
-            {
-                return it;
-            }
-        };
-
-        template<class It>
-        struct copy_or_move_iter<It, false>
-        {
-            static std::move_iterator<It> wrap(It const& it)
-            {
-                return std::move_iterator<It>(it);
-            }
-        };
-
-        template<class Sequence, class F>
-        task<when_any_result<Sequence>> when_any_impl(F&& f)
-        {
-            auto state = std::make_shared<when_any_state<Sequence>>();
-            auto ret(when_any_state<Sequence>::make_task(*state));
-            if (const std::size_t n = f(state->result.futures))
-            {
-                for (std::size_t i = 0; i != n; ++i)
-                {
-                    wait_any_at(i, state);
-                    if (!state->coro.load(std::memory_order_relaxed))
-                        break;
-                }
-            }
-            else
-                state->set_ready(std::size_t(-1));
-            return ret;
+            state->set_ready(std::size_t(-1));
         }
+
+        template<class State, std::size_t I, std::size_t E>
+        inline void wait_any_each(State const& state, std::integral_constant<std::size_t, I> i, std::integral_constant<std::size_t, E> e)
+        {
+            wait_any_at(i, state);
+            if (state->coro.load(std::memory_order_relaxed))
+                wait_any_each(state, std::integral_constant<std::size_t, I + 1>{}, e);
+        }
+
+        template<class State, std::size_t I>
+        inline void wait_any_each(State const&, std::integral_constant<std::size_t, I>, std::integral_constant<std::size_t, I>) {}
     }
 
     template<class InputIt>
-    inline auto when_any(InputIt first, InputIt last) ->
+    auto when_any(InputIt first, InputIt last) ->
         task<when_any_result<std::vector<typename std::iterator_traits<InputIt>::value_type>>>
     {
         using task_t = typename std::iterator_traits<InputIt>::value_type;
         using seq_t = std::vector<task_t>;
-        return detail::when_any_impl<seq_t>([&](seq_t& seq)
+        using iter = detail::copy_or_move_iter<InputIt, std::is_copy_constructible<task_t>::value>;
+        auto state = std::make_shared<detail::when_any_state<seq_t>>(true, iter::wrap(first), iter::wrap(last));
+        auto ret(detail::when_any_state<seq_t>::make_task(*state));
+        if (const std::size_t n = state->result.futures.size())
         {
-            using iter = detail::copy_or_move_iter<InputIt, std::is_copy_constructible<task_t>::value>;
-            seq.assign(iter::wrap(first), iter::wrap(last));
-            return seq.size();
-        });
+            for (std::size_t i = 0; i != n; ++i)
+            {
+                wait_any_at(i, state);
+                if (!state->coro.load(std::memory_order_relaxed))
+                    break;
+            }
+        }
+        else
+            state->set_ready(std::size_t(-1));
+        return ret;
     }
 
     template<class... Futures>
-    inline auto when_any(Futures&&... futures) ->
+    auto when_any(Futures&&... futures) ->
         task<when_any_result<std::tuple<std::decay_t<Futures>...>>>
     {
         using seq_t = std::tuple<std::decay_t<Futures>...>;
-        return detail::when_any_impl<seq_t>([&](seq_t& seq)
-        {
-            seq = std::forward_as_tuple(std::forward<Futures>(futures)...);
-            return std::tuple_size<seq_t>{};
-        });
+        auto state = std::make_shared<detail::when_any_state<seq_t>>(true, detail::copy_or_move(futures)...);
+        auto ret(detail::when_any_state<seq_t>::make_task(*state));
+        detail::wait_any_each(state, std::integral_constant<std::size_t, 0>{}, std::tuple_size<seq_t>{});
+        return ret;
     }
 }
 
