@@ -33,10 +33,14 @@ namespace co2
                 return co2::await_suspend(std::get<N>(t), coro);
             }
 
+            constexpr await_table_t()
+              : await_table_t(std::make_index_sequence<size>{})
+            {}
+
             template<std::size_t... N>
-            constexpr await_table_t(std::index_sequence<N...> = {})
-                : ready{ready_fn<N>...}
-                , suspend{suspend_fn<N>...}
+            constexpr await_table_t(std::index_sequence<N...>)
+              : ready{ready_fn<N>...}
+              , suspend{suspend_fn<N>...}
             {}
 
             bool(*ready[size])(Tuple& t);
@@ -44,10 +48,11 @@ namespace co2
         };
 
         template<class Tuple>
-        constexpr await_table_t<Tuple> await_table = {};
+        await_table_t<Tuple> const await_table = {};
 
         template<class T>
         auto when_all_impl(std::vector<T> seq) CO2_BEG(task<std::vector<T>>, (seq),
+            CO2_TEMP_SIZE(0);
             CO2_AUTO(it, seq.begin());
         )
         {
@@ -66,6 +71,7 @@ namespace co2
 
         template<class... T>
         auto when_all_impl(std::tuple<T...> seq) CO2_BEG(task<std::tuple<T...>>, (seq),
+            CO2_TEMP_SIZE(0);
             std::size_t i = 0;
         )
         {
