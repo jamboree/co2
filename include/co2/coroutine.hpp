@@ -21,6 +21,7 @@
 #include <boost/preprocessor/facilities/is_empty.hpp>
 #include <boost/preprocessor/arithmetic/mod.hpp>
 #include <boost/preprocessor/arithmetic/dec.hpp>
+#include <boost/preprocessor/punctuation/remove_parens.hpp>
 #include <co2/detail/void.hpp>
 
 namespace co2
@@ -1057,7 +1058,7 @@ namespace co2 { namespace detail
 
 #define Zz_CO2_HEAD(R, args, alloc, ...)                                        \
 {                                                                               \
-    using _co2_T = ::co2::coroutine_traits<R>;                                  \
+    using _co2_T = ::co2::coroutine_traits<BOOST_PP_REMOVE_PARENS(R)>;          \
     using _co2_P = ::co2::detail::promise_t<_co2_T>;                            \
     using _co2_C = ::co2::coroutine<_co2_P>;                                    \
     Zz_CO2_K(args)                                                              \
@@ -1087,7 +1088,7 @@ namespace co2 { namespace detail
                     Zz_CO2_SUSPEND_IF(initial_suspend(), __COUNTER__);          \
 /***/
 
-#define CO2_BEG(R, capture, ...) -> R Zz_CO2_HEAD(R,                            \
+#define CO2_BEG(R, capture, ...) -> BOOST_PP_REMOVE_PARENS(R) Zz_CO2_HEAD(R,    \
     Zz_CO2_GET_ARGS(capture), Zz_CO2_GET_ALLOC(capture), __VA_ARGS__)           \
 /***/
 

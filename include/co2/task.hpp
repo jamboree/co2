@@ -10,6 +10,7 @@
 #include <atomic>
 #include <boost/assert.hpp>
 #include <co2/detail/task.hpp>
+#include <co2/detail/final_reset.hpp>
 
 namespace co2 { namespace task_detail
 {
@@ -75,20 +76,13 @@ namespace co2
 
         T await_resume()
         {
-            struct finalizer
-            {
-                task* that;
-                ~finalizer()
-                {
-                    that->reset();
-                }
-            } _{this};
+            detail::final_reset<task> _{this};
             return this->_promise->get();
         }
 
         shared_task<T> share()
         {
-            return task_detail::share(std::move(*this));
+            return task_detail::convert<shared_task<T>>(std::move(*this));
         }
     };
 

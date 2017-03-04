@@ -80,7 +80,7 @@ namespace co2
         }
 
         shared_task(task<T>&& other)
-          : base_type(task_detail::share(std::move(other)))
+          : base_type(task_detail::convert<shared_task>(std::move(other)))
         {}
 
         shared_task& operator=(shared_task other) noexcept

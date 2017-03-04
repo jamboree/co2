@@ -205,10 +205,17 @@ namespace co2 { namespace task_detail
         promise_type* _promise;
     };
 
-    template<class T>
-    inline auto share(task<T> t) CO2_BEG(shared_task<T>, (t), CO2_TEMP_SIZE(sizeof(void*));)
+    template<class ToTask, class FromTask>
+    auto convert(FromTask t) CO2_BEG(ToTask, (t), CO2_TEMP_SIZE(0);)
     {
-        CO2_AWAIT_RETURN(t);
+        if (!t.await_ready())
+        {
+            CO2_SUSPEND([&](coroutine<>& coro)
+            {
+                return t.await_suspend(coro);
+            });
+        }
+        CO2_RETURN(t.await_resume());
     } CO2_END
 }}
 

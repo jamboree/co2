@@ -10,6 +10,7 @@
 #include <co2/coroutine.hpp>
 #include <co2/utility/task_cancelled.hpp>
 #include <co2/detail/storage.hpp>
+#include <co2/detail/final_reset.hpp>
 
 namespace co2 { namespace detail
 {
@@ -158,14 +159,7 @@ namespace co2
 
         T await_resume()
         {
-            struct finalizer
-            {
-                lazy_task* that;
-                ~finalizer()
-                {
-                    that->reset();
-                }
-            } _{this};
+            detail::final_reset<lazy_task> _{this};
             return _promise->get();
         }
 
@@ -210,6 +204,12 @@ namespace co2
 
         promise_type* _promise;
     };
+
+    template<class T>
+    inline void swap(lazy_task<T>& a, lazy_task<T>& b) noexcept
+    {
+        a.swap(b);
+    }
 }
 
 #endif
