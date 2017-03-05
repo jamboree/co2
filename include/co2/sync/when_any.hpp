@@ -29,13 +29,7 @@ namespace co2
         auto wait_any_at(std::size_t i, std::shared_ptr<State> state)
         CO2_BEG(void, (i, state), CO2_TEMP_SIZE(0);)
         {
-            if (!state->result.futures[i].await_ready())
-            {
-                CO2_SUSPEND([&](coroutine<>& coro)
-                {
-                    return state->result.futures[i].await_suspend(coro);
-                });
-            }
+            CO2_SUSPEND(state->result.futures[i].await_suspend);
             state->set_ready(i);
         } CO2_END
             
@@ -43,13 +37,7 @@ namespace co2
         auto wait_any_at(std::integral_constant<std::size_t, I>, std::shared_ptr<State> state)
         CO2_BEG(void, (state), CO2_TEMP_SIZE(0);)
         {
-            if (!std::get<I>(state->result.futures).await_ready())
-            {
-                CO2_SUSPEND([&](coroutine<>& coro)
-                {
-                    return std::get<I>(state->result.futures).await_suspend(coro);
-                });
-            }
+            CO2_SUSPEND(std::get<I>(state->result.futures).await_suspend);
             state->set_ready(I);
         } CO2_END
 
@@ -98,6 +86,8 @@ namespace co2
         template<class State, std::size_t I, std::size_t E>
         inline void wait_any_each(State const& state, std::integral_constant<std::size_t, I> i, std::integral_constant<std::size_t, E> e)
         {
+            if (std::get<I>(state->result.futures).await_ready())
+                return state->set_ready(I);
             wait_any_at(i, state);
             if (state->coro.load(std::memory_order_relaxed))
                 wait_any_each(state, std::integral_constant<std::size_t, I + 1>{}, e);
@@ -120,6 +110,11 @@ namespace co2
         {
             for (std::size_t i = 0; i != n; ++i)
             {
+                if (state->result.futures[i].await_ready())
+                {
+                    state->set_ready(i);
+                    break;
+                }
                 wait_any_at(i, state);
                 if (!state->coro.load(std::memory_order_relaxed))
                     break;

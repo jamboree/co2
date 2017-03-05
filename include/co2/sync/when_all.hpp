@@ -60,10 +60,7 @@ namespace co2
             {
                 if (!it->await_ready())
                 {
-                    CO2_SUSPEND([&](coroutine<>& coro)
-                    {
-                        return it->await_suspend(coro);
-                    });
+                    CO2_SUSPEND(it->await_suspend);
                 }
             }
             CO2_RETURN_LOCAL(seq);
