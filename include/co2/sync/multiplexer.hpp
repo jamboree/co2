@@ -8,9 +8,7 @@
 #define CO2_SYNC_MULTIPLEXER_HPP_INCLUDED
 
 #include <atomic>
-#include <vector>
 #include <memory>
-#include <boost/assert.hpp>
 #include <co2/task.hpp>
 #include <co2/detail/copy_or_move.hpp>
 
@@ -78,14 +76,23 @@ namespace co2 { namespace detail
             auto& next = coroutine_data(h);
             next = nullptr;
             if (ready_list.compare_exchange_strong(next, this, std::memory_order_relaxed))
-                return false;
+            {
+                if (lock())
+                    return false;
+                next = this;
+            }
             while (!ready_list.compare_exchange_weak(next, h, std::memory_order_relaxed))
             {
-                if (!next && !lock_flag.test_and_set(std::memory_order_acquire))
+                if (!next && lock())
                     return false;
             }
             coro.detach();
             return true;
+        }
+
+        bool lock()
+        {
+            return !lock_flag.test_and_set(std::memory_order_acquire);
         }
 
         bool suspend(coroutine<>& coro)
@@ -93,11 +100,10 @@ namespace co2 { namespace detail
             then = coro.handle();
             lock_flag.clear(std::memory_order_release);
             void* sentinel = this;
-            if (!ready_list.compare_exchange_strong(sentinel, nullptr, std::memory_order_relaxed))
+            if (!ready_list.compare_exchange_strong(sentinel, nullptr, std::memory_order_relaxed) && sentinel)
             {
                 then = nullptr;
                 active_list = ready_list.exchange(this, std::memory_order_relaxed);
-                BOOST_ASSERT(active_list && active_list != this);
                 return false;
             }
             coro.detach();
@@ -179,7 +185,7 @@ namespace co2
         awaiter select()
         {
             --_count;
-            return{*_state};
+            return {*_state};
         }
     };
 }
