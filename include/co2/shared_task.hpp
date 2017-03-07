@@ -38,13 +38,12 @@ namespace co2 { namespace task_detail
 
         bool follow(coroutine<>& cb)
         {
-            auto prev = _then.load(std::memory_order_relaxed);
-            auto curr = cb.to_address();
-            auto& next = coroutine_data(cb.handle());
-            while (prev)
+            auto curr = cb.handle();
+            auto& next = coroutine_data(curr);
+            next = _then.load(std::memory_order_relaxed);
+            while (next)
             {
-                next = prev;
-                if (_then.compare_exchange_weak(prev, curr, std::memory_order_release))
+                if (_then.compare_exchange_weak(next, curr, std::memory_order_release))
                 {
                     cb.detach();
                     return true;
