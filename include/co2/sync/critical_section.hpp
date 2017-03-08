@@ -30,8 +30,7 @@ namespace co2
         bool enter() noexcept
         {
             void* curr = nullptr;
-            void* next = this;
-            return _then.compare_exchange_strong(curr, next, std::memory_order_relaxed);
+            return _then.compare_exchange_strong(curr, this, std::memory_order_relaxed);
         }
 
         void leave() noexcept
@@ -49,13 +48,10 @@ namespace co2
 
         void do_suspend(coroutine<>& cb) noexcept
         {
-            auto prev = _then.load(std::memory_order_relaxed);
             auto curr = cb.detach();
             auto& next = coroutine_data(curr);
-            do
-            {
-                next = prev;
-            } while (!_then.compare_exchange_weak(prev, curr, std::memory_order_release));
+            next = _then.load(std::memory_order_relaxed);
+            while (!_then.compare_exchange_weak(next, curr, std::memory_order_release));
         }
     };
 }
@@ -64,7 +60,7 @@ namespace co2
 do                                                                              \
 {                                                                               \
     if (!cs.enter())                                                            \
-        CO2_SUSPEND(cs.do_suspend);                                          \
+        CO2_SUSPEND(cs.do_suspend);                                             \
     ::co2::critical_section::leave_guard _{cs};                                 \
     __VA_ARGS__                                                                 \
 } while (false)                                                                 \
