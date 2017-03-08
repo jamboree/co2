@@ -110,18 +110,23 @@ namespace co2 { namespace detail
             return true;
         }
 
-        static auto wait_task(Task t, std::shared_ptr<multiplexer_state> state)
+        static auto wait_task(Task t, std::weak_ptr<multiplexer_state> state)
         CO2_BEG(void, (t, state), CO2_TEMP_SIZE(0);)
         {
             if (!t.await_ready())
             {
                 CO2_SUSPEND(t.await_suspend);
             }
-            CO2_SUSPEND(state->add_ready);
-            state->set_result(std::move(t));
+            CO2_SUSPEND([&](coroutine<>& coro)
+            {
+                if (auto p = state.lock())
+                    return p->add_ready(coro);
+                return true;
+            });
+            if (auto p = state.lock())
+                p->set_result(std::move(t));
         } CO2_END
     };
-
 }}
 
 namespace co2
