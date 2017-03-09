@@ -1,4 +1,4 @@
-CO2 - Coroutine II [![Try it online][badge.wandbox]](http://melpon.org/wandbox/permlink/nGbpIzrG2EepHpq2)
+CO2 - Coroutine II [![Try it online][badge.wandbox]](http://melpon.org/wandbox/permlink/CLpKAI1y5oeeTT6Y)
 ===
 
 A header-only C++ stackless coroutine emulation library, providing interface close to [N4286](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4286.pdf).
@@ -387,7 +387,7 @@ auto session(asio::ip::tcp::socket sock) CO2_BEG(void, (sock),
     }
 } CO2_END
 
-auto server(asio::io_service& io, unsigned port) CO2_BEG(void, (io, port),
+auto server(asio::io_service& io, unsigned short port) CO2_BEG(void, (io, port),
     asio::ip::tcp::endpoint endpoint{asio::ip::tcp::v4(), port};
     asio::ip::tcp::acceptor acceptor{io, endpoint};
 )

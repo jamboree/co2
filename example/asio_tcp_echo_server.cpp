@@ -31,7 +31,7 @@ auto session(asio::ip::tcp::socket sock) CO2_BEG(void, (sock),
     }
 } CO2_END
 
-auto server(asio::io_service& io, unsigned port) CO2_BEG(void, (io, port),
+auto server(asio::io_service& io, unsigned short port) CO2_BEG(void, (io, port),
     asio::ip::tcp::endpoint endpoint{asio::ip::tcp::v4(), port};
     asio::ip::tcp::acceptor acceptor{io, endpoint};
 )

@@ -435,8 +435,8 @@ namespace co2 { namespace detail
     template<class Promise>
     inline auto try_suspend(Promise* p) -> decltype(p->try_suspend())
     {
-        decltype(p->try_resume()) is_also_required(void);
-        decltype(p->try_cancel()) is_also_required(void);
+        { decltype(p->try_resume()) is_also_required(void); }
+        { decltype(p->try_cancel()) is_also_required(void); }
         return p->try_suspend();
     }
 
@@ -448,8 +448,8 @@ namespace co2 { namespace detail
     template<class Promise>
     inline auto try_resume(Promise* p) -> decltype(p->try_resume())
     {
-        decltype(p->try_suspend()) is_also_required(void);
-        decltype(p->try_cancel()) is_also_required(void);
+        { decltype(p->try_suspend()) is_also_required(void); }
+        { decltype(p->try_cancel()) is_also_required(void); }
         return p->try_resume();
     }
 
@@ -461,8 +461,8 @@ namespace co2 { namespace detail
     template<class Promise>
     inline auto try_cancel(Promise* p) -> decltype(p->try_cancel())
     {
-        decltype(p->try_suspend()) is_also_required(void);
-        decltype(p->try_resume()) is_also_required(void);
+        { decltype(p->try_suspend()) is_also_required(void); }
+        { decltype(p->try_resume()) is_also_required(void); }
         return p->try_cancel();
     }
 
