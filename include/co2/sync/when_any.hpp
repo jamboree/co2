@@ -130,7 +130,7 @@ namespace co2
         task<when_any_result<std::tuple<std::decay_t<Futures>...>>>
     {
         using seq_t = std::tuple<std::decay_t<Futures>...>;
-        auto state = std::make_shared<detail::when_any_state<seq_t>>(true, detail::copy_or_move(futures)...);
+        auto state = std::make_shared<detail::when_any_state<seq_t>>(true, detail::copy_or_move<Futures>(futures)...);
         auto ret(detail::when_any_state<seq_t>::make_task(*state));
         detail::wait_any_each(state, std::integral_constant<std::size_t, 0>{}, std::tuple_size<seq_t>{});
         return ret;

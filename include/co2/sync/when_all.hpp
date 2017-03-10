@@ -102,7 +102,7 @@ namespace co2
         task<std::tuple<std::decay_t<Futures>...>>
     {
         using seq_t = std::tuple<std::decay_t<Futures>...>;
-        return detail::when_all_impl(seq_t(detail::copy_or_move(futures)...));
+        return detail::when_all_impl(seq_t(detail::copy_or_move<Futures>(futures)...));
     }
 }
 

@@ -31,8 +31,20 @@ namespace co2 { namespace detail
     };
 
     template<class T>
-    using copy_or_move_t = std::conditional_t<
-        std::is_copy_constructible<T>::value, T const&, T&&>;
+    struct copy_or_move_impl
+    {
+        using type = T&&;
+    };
+
+    template<class T>
+    struct copy_or_move_impl<T&>
+    {
+        using type = std::conditional_t<
+            std::is_copy_constructible<T>::value, T const&, T&&>;
+    };
+
+    template<class T>
+    using copy_or_move_t = typename copy_or_move_impl<T>::type;
 
     template<class T>
     inline copy_or_move_t<T> copy_or_move(T& t)
