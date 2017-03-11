@@ -390,11 +390,15 @@ auto session(asio::ip::tcp::socket sock) CO2_BEG(void, (sock),
 auto server(asio::io_service& io, unsigned short port) CO2_BEG(void, (io, port),
     asio::ip::tcp::endpoint endpoint{asio::ip::tcp::v4(), port};
     asio::ip::tcp::acceptor acceptor{io, endpoint};
+    asio::ip::tcp::socket sock{io};
 )
 {
     std::cout << "server running at: " << endpoint << std::endl;
     for ( ; ; )
-        CO2_AWAIT_APPLY(session, act::accept(acceptor));
+    {
+        CO2_AWAIT(act::accept(acceptor, sock));
+        session(std::move(sock));
+    }
 } CO2_END
 ```
 
