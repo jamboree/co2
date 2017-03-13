@@ -19,10 +19,10 @@ namespace co2 { namespace detail
         void operator()() const {}
     };
 
-    template<class RHS>
-    constexpr RHS&& operator,(RHS&& rhs, void_) noexcept
+    template<class LHS>
+    constexpr LHS&& operator,(LHS&& lhs, void_) noexcept
     {
-        return static_cast<RHS&&>(rhs);
+        return static_cast<LHS&&>(lhs);
     }
 
     inline void operator,(void_, void_) noexcept {}
