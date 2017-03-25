@@ -1,4 +1,4 @@
-CO2 - Coroutine II [![Try it online][badge.wandbox]](http://melpon.org/wandbox/permlink/CLpKAI1y5oeeTT6Y)
+CO2 - Coroutine II [![Try it online][badge.wandbox]](https://wandbox.org/permlink/bTJYrfHELgDaF1SH)
 ===
 
 A header-only C++ stackless coroutine emulation library, providing interface close to [N4286](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4286.pdf).
@@ -221,6 +221,7 @@ __Headers__
 * `#include <co2/lazy_task.hpp>`
 * `#include <co2/sync/event.hpp>`
 * `#include <co2/sync/critical_section.hpp>`
+* `#include <co2/sync/work_group.hpp>`
 * `#include <co2/sync/when_all.hpp>`
 * `#include <co2/sync/when_any.hpp>`
 * `#include <co2/blocking.hpp>`
@@ -258,6 +259,7 @@ __Classes__
 * `co2::lazy_task<T>`
 * `co2::event`
 * `co2::critical_section`
+* `co2::work_group`
 * `co2::suspend_always`
 * `co2::suspend_never`
 * `co2::stack_manager`
