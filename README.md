@@ -1,4 +1,4 @@
-CO2 - Coroutine II [![Try it online][badge.wandbox]](https://wandbox.org/permlink/bTJYrfHELgDaF1SH)
+CO2 - Coroutine II [![Try it online][badge.wandbox]](https://wandbox.org/permlink/wnIfC0CMlrPenORX)
 ===
 
 A header-only C++ stackless coroutine emulation library, providing interface close to [N4286](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4286.pdf).

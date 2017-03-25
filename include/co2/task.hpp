@@ -27,7 +27,7 @@ namespace co2 { namespace task_detail
 
         void finalize() noexcept
         {
-            auto then = _then.exchange(nullptr, std::memory_order_relaxed);
+            auto then = _then.exchange(nullptr, std::memory_order_acquire);
             if (then != this)
                 coroutine_final_run(static_cast<coroutine_handle>(then));
         }
@@ -35,7 +35,7 @@ namespace co2 { namespace task_detail
         bool follow(coroutine<>& cb)
         {
             void* last = this;
-            if (_then.compare_exchange_strong(last, cb.handle(), std::memory_order_relaxed))
+            if (_then.compare_exchange_strong(last, cb.handle(), std::memory_order_acq_rel))
             {
                 cb.detach();
                 return true;
@@ -44,7 +44,7 @@ namespace co2 { namespace task_detail
             // allowed for when_any.
             if (last)
             {
-                if (_then.compare_exchange_strong(last, cb.handle(), std::memory_order_relaxed))
+                if (_then.compare_exchange_strong(last, cb.handle(), std::memory_order_release))
                 {
                     coroutine<>{static_cast<coroutine_handle>(last)};
                     cb.detach();

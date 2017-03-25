@@ -28,7 +28,7 @@ namespace co2
         {
             if (_work_count.fetch_sub(1u, std::memory_order_relaxed) == 1u)
             {
-                if (auto then = _then.exchange(this, std::memory_order_relaxed))
+                if (auto then = _then.exchange(this, std::memory_order_acquire))
                     coroutine<>{static_cast<coroutine_handle>(then)}();
             }
         }
@@ -55,11 +55,7 @@ namespace co2
 
         ~work_group()
         {
-            BOOST_ASSERT_MSG
-            (
-                !_work_count.load(std::memory_order_release),
-                "pending work in work_group"
-            );
+            BOOST_ASSERT_MSG(await_ready(), "pending work in work_group");
         }
 
         work create()
@@ -74,7 +70,7 @@ namespace co2
 
         bool await_suspend(coroutine<>& cb) noexcept
         {
-            if (_then.exchange(cb.handle(), std::memory_order_relaxed))
+            if (_then.exchange(cb.handle(), std::memory_order_release))
                 return false;
             cb.detach();
             return true;
