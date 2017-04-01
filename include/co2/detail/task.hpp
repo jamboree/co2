@@ -141,10 +141,13 @@ namespace co2 { namespace task_detail
             other._promise = nullptr;
         }
 
-        impl& operator=(impl other) noexcept
+        impl& operator=(impl&& other) noexcept
         {
-            this->~impl();
-            return *new(this) impl(std::move(other));
+            if (_promise)
+                release();
+            _promise = other._promise;
+            other._promise = nullptr;
+            return *this;
         }
 
         explicit impl(promise_type* promise) noexcept : _promise(promise) {}
@@ -196,7 +199,7 @@ namespace co2 { namespace task_detail
 
     protected:
 
-        void release()
+        void release() noexcept
         {
             if (_promise->test_last())
                 coroutine<promise_type>::destroy(_promise);

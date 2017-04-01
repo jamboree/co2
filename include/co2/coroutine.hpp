@@ -121,10 +121,11 @@ namespace co2
             other._ptr = nullptr;
         }
 
-        coroutine& operator=(coroutine other) noexcept
+        coroutine& operator=(coroutine&& other) noexcept
         {
-            this->~coroutine();
-            return *new(this) coroutine(std::move(other));
+            reset(other._ptr);
+            other._ptr = nullptr;
+            return *this;
         }
 
         ~coroutine()

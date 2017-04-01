@@ -140,18 +140,21 @@ namespace co2
 
         explicit lazy_task(promise_type* promise) noexcept : _promise(promise) {}
 
-        lazy_task& operator=(lazy_task other) noexcept
+        lazy_task& operator=(lazy_task&& other) noexcept
         {
-            this->~lazy_task();
-            return *new(this) lazy_task(std::move(other));
+            if (_promise)
+                release();
+            _promise = other._promise;
+            other._promise = nullptr;
+            return *this;
         }
 
-        bool await_ready()
+        bool await_ready() const noexcept
         {
             return _promise->_tag != detail::tag::null;
         }
 
-        void await_suspend(coroutine<>& coro)
+        void await_suspend(coroutine<>& coro) noexcept
         {
             _promise->_then = coro.detach();
             coroutine_final_run(coroutine<promise_type>::from_promise(_promise));
@@ -182,10 +185,7 @@ namespace co2
         {
             if (_promise)
             {
-                if (_promise->_then)
-                    coroutine<promise_type>::destroy(_promise);
-                else
-                    coroutine_final_run(coroutine<promise_type>::from_promise(_promise));
+                release();
                 _promise = nullptr;
             }
         }
@@ -197,10 +197,19 @@ namespace co2
 
         ~lazy_task()
         {
-            reset();
+            if (_promise)
+                release();
         }
 
     private:
+
+        void release() noexcept
+        {
+            if (_promise->_then)
+                coroutine<promise_type>::destroy(_promise);
+            else
+                coroutine_final_run(coroutine<promise_type>::from_promise(_promise));
+        }
 
         promise_type* _promise;
     };
