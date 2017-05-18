@@ -17,17 +17,17 @@ namespace co2 { namespace task_detail
     struct unique_promise_base : promise_base
     {
         std::atomic<void*> _then {this};
-        std::atomic<tag> _tag {tag::null};
+        tag _tag {tag::null};
         std::atomic_flag _last_owner = ATOMIC_FLAG_INIT;
 
-        bool test_last() noexcept
+        bool test_last(std::memory_order mo) noexcept
         {
-            return _last_owner.test_and_set(std::memory_order_relaxed);
+            return _last_owner.test_and_set(mo);
         }
 
         void finalize() noexcept
         {
-            auto then = _then.exchange(nullptr, std::memory_order_acquire);
+            auto then = _then.exchange(nullptr, std::memory_order_acq_rel);
             if (then != this)
                 coroutine_final_run(static_cast<coroutine_handle>(then));
         }
@@ -35,7 +35,7 @@ namespace co2 { namespace task_detail
         bool follow(coroutine<>& cb)
         {
             void* last = this;
-            if (_then.compare_exchange_strong(last, cb.handle(), std::memory_order_acq_rel))
+            if (_then.compare_exchange_strong(last, cb.handle(), std::memory_order_release, std::memory_order_acquire))
             {
                 cb.detach();
                 return true;
@@ -44,7 +44,7 @@ namespace co2 { namespace task_detail
             // allowed for when_any.
             if (last)
             {
-                if (_then.compare_exchange_strong(last, cb.handle(), std::memory_order_release))
+                if (_then.compare_exchange_strong(last, cb.handle(), std::memory_order_acq_rel))
                 {
                     coroutine<>{static_cast<coroutine_handle>(last)};
                     cb.detach();

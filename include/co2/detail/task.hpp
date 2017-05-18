@@ -47,18 +47,18 @@ namespace co2 { namespace task_detail
         void set_result(U&& u)
         {
             new(&_data.value) val_t(std::forward<U>(u));
-            Base::_tag.store(tag::value, std::memory_order_release);
+            Base::_tag = tag::value;
         }
 
         void set_exception(std::exception_ptr e) noexcept
         {
             new(&_data.exception) std::exception_ptr(std::move(e));
-            Base::_tag.store(tag::exception, std::memory_order_release);
+            Base::_tag = tag::exception;
         }
 
         T&& get()
         {
-            switch (Base::_tag.load(std::memory_order_acquire))
+            switch (Base::_tag)
             {
             case tag::exception:
                 std::rethrow_exception(_data.exception);
@@ -72,7 +72,7 @@ namespace co2 { namespace task_detail
 
         ~promise_data()
         {
-            _data.destroy(Base::_tag.load(std::memory_order_relaxed));
+            _data.destroy(Base::_tag);
         }
 
         detail::storage<val_t> _data;
@@ -83,18 +83,18 @@ namespace co2 { namespace task_detail
     {
         void set_result() noexcept
         {
-            Base::_tag.store(tag::value, std::memory_order_release);
+            Base::_tag = tag::value;
         }
 
         void set_exception(std::exception_ptr e) noexcept
         {
             _e = std::move(e);
-            Base::_tag.store(tag::exception, std::memory_order_release);
+            Base::_tag = tag::exception;
         }
 
         void get()
         {
-            switch (Base::_tag.load(std::memory_order_acquire))
+            switch (Base::_tag)
             {
             case tag::exception:
                 std::rethrow_exception(_e);
@@ -124,13 +124,13 @@ namespace co2 { namespace task_detail
 
             void cancel() noexcept
             {
-                Promise::_tag.store(tag::cancelled, std::memory_order_release);
+                Promise::_tag = tag::cancelled;
             }
 
             bool final_suspend() noexcept
             {
                 this->finalize();
-                return !this->test_last();
+                return !this->test_last(std::memory_order_release);
             }
         };
 
@@ -184,12 +184,12 @@ namespace co2 { namespace task_detail
 
         bool is_cancelled() const noexcept
         {
-            return _promise->_tag.load(std::memory_order_relaxed) == tag::cancelled;
+            return await_ready() && _promise->_tag == tag::cancelled;
         }
 
         bool await_ready() const noexcept
         {
-            return !_promise->_then.load(std::memory_order_relaxed);
+            return !_promise->_then.load(std::memory_order_acquire);
         }
 
         bool await_suspend(coroutine<>& cb) noexcept
@@ -198,10 +198,9 @@ namespace co2 { namespace task_detail
         }
 
     protected:
-
         void release() noexcept
         {
-            if (_promise->test_last())
+            if (_promise->test_last(std::memory_order_acquire))
                 coroutine<promise_type>::destroy(_promise);
         }
 

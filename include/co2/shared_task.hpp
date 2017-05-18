@@ -17,17 +17,17 @@ namespace co2 { namespace task_detail
     struct shared_promise_base : promise_base
     {
         std::atomic<unsigned> _use_count {2u};
-        std::atomic<tag> _tag {tag::null};
+        tag _tag {tag::null};
         std::atomic<void*> _then {this};
 
-        bool test_last() noexcept
+        bool test_last(std::memory_order mo) noexcept
         {
-            return _use_count.fetch_sub(1u, std::memory_order_relaxed) == 1u;
+            return _use_count.fetch_sub(1u, mo) == 1u;
         }
 
         void finalize() noexcept
         {
-            auto next = _then.exchange(nullptr, std::memory_order_acquire);
+            auto next = _then.exchange(nullptr, std::memory_order_acq_rel);
             while (next != this)
             {
                 auto then = static_cast<coroutine_handle>(next);
@@ -40,10 +40,10 @@ namespace co2 { namespace task_detail
         {
             auto curr = cb.handle();
             auto& next = coroutine_data(curr);
-            next = _then.load(std::memory_order_relaxed);
+            next = _then.load(std::memory_order_acquire);
             while (next)
             {
-                if (_then.compare_exchange_weak(next, curr, std::memory_order_release))
+                if (_then.compare_exchange_weak(next, curr, std::memory_order_release, std::memory_order_acquire))
                 {
                     cb.detach();
                     return true;
