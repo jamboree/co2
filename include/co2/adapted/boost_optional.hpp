@@ -24,7 +24,7 @@ namespace co2 { namespace boost_optional_detail
 
         bool final_suspend() noexcept
         {
-            return true;
+            return false;
         }
 
         bool cancellation_requested() const noexcept
@@ -34,18 +34,22 @@ namespace co2 { namespace boost_optional_detail
 
         optional<T> get_return_object(coroutine<promise>& coro)
         {
+            optional<T> ret;
+            _ret = &ret;
             coro.resume();
-            return std::move(_ret);
+            // At this point, the promise itself and the coroutine frame is
+            // destroyed.
+            return ret;
         }
 
         void set_result(T val)
         {
-            _ret = std::forward<T>(val);
+            *_ret = std::forward<T>(val);
         }
 
     private:
 
-        optional<T> _ret;
+        optional<T>* _ret = nullptr;
     };
 }}
 
@@ -61,15 +65,15 @@ namespace co2
 namespace boost
 {
     template<class T>
-    inline bool await_ready(optional<T> const& opt)
+    inline bool await_ready(optional<T> const& opt) noexcept
     {
         return !!opt;
     }
 
     template<class T>
-    inline void await_suspend(optional<T> const& opt, co2::coroutine<>& coro)
+    inline void await_suspend(optional<T> const&, co2::coroutine<>&) noexcept
     {
-        coro.reset();
+        // Empty.
     }
 
     template<class T>
