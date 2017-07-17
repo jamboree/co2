@@ -30,7 +30,10 @@ namespace co2 { namespace detail
 
     enum class tag
     {
-        null, value, exception, cancelled
+        // Intermediate state.
+        pending, running, cancelling,
+        // Resultant state.
+        value, exception, cancelled
     };
 
     template<class T>

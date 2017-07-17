@@ -8,6 +8,7 @@
 #define CO2_DETAIL_TASK_HPP_INCLUDED
 
 #include <atomic>
+#include <type_traits>
 #include <co2/coroutine.hpp>
 #include <co2/utility/task_cancelled.hpp>
 #include <co2/detail/storage.hpp>
@@ -24,6 +25,9 @@ namespace co2
 namespace co2 { namespace task_detail
 {
     using detail::tag;
+
+    template<class T>
+    using cref_t = std::add_lvalue_reference_t<std::add_const_t<T>>;
 
     struct promise_base
     {
@@ -184,7 +188,7 @@ namespace co2 { namespace task_detail
 
         bool is_cancelled() const noexcept
         {
-            return await_ready() && _promise->_tag == tag::cancelled;
+            return _promise->_tag == tag::cancelled;
         }
 
         bool await_ready() const noexcept

@@ -9,16 +9,15 @@
 
 #include <atomic>
 #include <vector>
-#include <type_traits>
 #include <co2/detail/task.hpp>
 
 namespace co2 { namespace task_detail
 {
     struct shared_promise_base : promise_base
     {
-        std::atomic<unsigned> _use_count {2u};
-        tag _tag {tag::null};
         std::atomic<void*> _then {this};
+        std::atomic<unsigned> _use_count {2u};
+        tag _tag {tag::pending};
 
         bool test_last(std::memory_order mo) noexcept
         {
@@ -52,9 +51,6 @@ namespace co2 { namespace task_detail
             return false;
         }
     };
-
-    template<class T>
-    using cref_t = std::add_lvalue_reference_t<std::add_const_t<T>>;
 }}
 
 namespace co2

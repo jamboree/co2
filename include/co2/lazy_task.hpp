@@ -77,7 +77,7 @@ namespace co2 { namespace detail
         }
 
         storage<val_t> _data;
-        tag _tag = tag::null;
+        tag _tag = tag::pending;
     };
 
     template<>

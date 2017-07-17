@@ -17,7 +17,7 @@ namespace co2 { namespace task_detail
     struct unique_promise_base : promise_base
     {
         std::atomic<void*> _then {this};
-        tag _tag {tag::null};
+        tag _tag {tag::pending};
         std::atomic_flag _last_owner = ATOMIC_FLAG_INIT;
 
         bool test_last(std::memory_order mo) noexcept
