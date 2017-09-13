@@ -244,7 +244,11 @@ namespace co2
                 coro();
             }
 
-            void set_exception(std::exception_ptr const&) noexcept {}
+            void set_exception(std::exception_ptr const&) noexcept
+            {
+                // Like std::thread, terminate the program if it throws.
+                std::terminate();
+            }
         };
     };
 
