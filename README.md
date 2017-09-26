@@ -1,4 +1,4 @@
-CO2 - Coroutine II [![Try it online][badge.wandbox]](https://wandbox.org/permlink/wnIfC0CMlrPenORX)
+CO2 - Coroutine II [![Try it online][badge.wandbox]](https://wandbox.org/permlink/IqjltCEJ6UrACTig)
 ===
 
 A header-only C++ stackless coroutine emulation library, providing interface close to [N4286](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4286.pdf).
@@ -57,8 +57,8 @@ auto f(int i) CO2_BEG(return_type, (i),
 } CO2_END
 ```
 
-However, the `()` form cannot be used here, e.g. `int i2(i * 2);`, due to some implementation restrictions.
-Besides, `auto` deduced variable cannot be used directly, i.e. `auto var{expr};`, you have to use `CO2_AUTO(var, expr)` instead.
+Note that the `()` initializer cannot be used here, e.g. `int i2(i * 2);`, due to some emulation restrictions.
+Besides, `auto` deduced variable cannot be used directly, i.e. `auto var{expr};`, you have to use `CO2_AUTO(var, expr);` instead.
 
 Note that in this emulation, local variables intialization happens before `initial_suspend`, and if any exception is thrown during the intialization, `set_exception` won't be called, instead, the exception will propagate to the caller directly.
 
@@ -73,7 +73,7 @@ The `alloc` doesn't have to appear in the args-list if it's not used inside the 
 
 Inside the coroutine body, there are some restrictions:
 * local variables with automatic storage cannot cross suspend-resume points - you should specify them in local variables section of `CO2_BEG` as described above
-* `return` should be replaced with `CO2_RETURN`/`CO2_RETURN_FROM`
+* `return` should be replaced with `CO2_RETURN`/`CO2_RETURN_FROM`/`CO2_RETURN_LOCAL`
 * try-catch block surrouding suspend-resume points should be replaced with `CO2_TRY` & `CO2_CATCH`
 * identifiers starting with `_co2_` are reserved for this library
 
@@ -93,7 +93,7 @@ Equivalent to `var = await expr`.
 
 * `CO2_AWAIT_LET(var-decl, expr, body)`
 
-This is to eliminate the need of a local variable, for example:
+This allows you bind the awaited result to a temporary and do something to it.
 ```c++
 CO2_AWAIT_LET(auto i, task,
 {

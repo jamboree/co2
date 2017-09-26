@@ -148,7 +148,7 @@ namespace co2
             coroutine<promise_type>* _head = &_parent;
             coroutine<promise_type> _parent;
             detail::storage<val_t> _data;
-            detail::tag _tag = detail::tag::null;
+            detail::tag _tag = detail::tag::pending;
         };
 
         struct iterator

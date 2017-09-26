@@ -814,7 +814,7 @@ BOOST_PP_IF(Zz_CO2_IS_EMPTY t, Zz_CO2_TUPLE_FOR_EACH_EMPTY,                     
 #   define Zz_CO2_STMT_EXPR_END while (false)
 #   endif
 
-#define Zz_CO2_AWAIT(ret, expr, next)                                           \
+#define Zz_CO2_AWAIT(ret, expr, next, ...)                                      \
 Zz_CO2_STMT_EXPR_BEG {                                                          \
     using _co2_expr_t = decltype(::co2::detail::unrvref(expr));                 \
     using _co2_await = ::co2::detail::temp::traits<_co2_expr_t, _co2_sz::value>;\
@@ -854,6 +854,7 @@ Zz_CO2_STMT_EXPR_BEG {                                                          
     ::co2::detail::temp::auto_reset<_co2_expr_t, _co2_sz::value>                \
         _co2_reset = {_co2_tmp};                                                \
     ret (::co2::await_resume(_co2_await::get(_co2_tmp)));                       \
+    __VA_ARGS__                                                                 \
 } Zz_CO2_STMT_EXPR_END                                                          \
 /***/
 
@@ -902,11 +903,11 @@ do {                                                                            
 }                                                                               \
 /***/
 
-#define CO2_AWAIT_APPLY(f, expr) Zz_CO2_AWAIT(f, expr, __COUNTER__)
-#define CO2_AWAIT_SET(var, expr) Zz_CO2_AWAIT(var =, expr, __COUNTER__)
-#define CO2_AWAIT(expr) Zz_CO2_AWAIT(, expr, __COUNTER__)
-#define CO2_AWAIT_LET(let, expr, ...)                                           \
-Zz_CO2_AWAIT(([this](let) __VA_ARGS__), expr, __COUNTER__)                      \
+#define CO2_AWAIT_APPLY(f, expr) Zz_CO2_AWAIT(f, expr, __COUNTER__,)
+#define CO2_AWAIT_SET(var, expr) Zz_CO2_AWAIT(var =, expr, __COUNTER__,)
+#define CO2_AWAIT(expr) Zz_CO2_AWAIT(, expr, __COUNTER__,)
+#define CO2_AWAIT_LET(init, expr, ...)                                          \
+Zz_CO2_AWAIT(init =, expr, __COUNTER__, __VA_ARGS__)                            \
 /***/
 
 #define CO2_YIELD(...) CO2_AWAIT(_co2_p.yield_value(__VA_ARGS__))
@@ -937,7 +938,7 @@ do {                                                                            
 } while (false)                                                                 \
 /***/
 
-#define CO2_AWAIT_RETURN(expr) Zz_CO2_AWAIT(CO2_RETURN_FROM, expr, __COUNTER__)
+#define CO2_AWAIT_RETURN(expr) Zz_CO2_AWAIT(CO2_RETURN_FROM, expr, __COUNTER__,)
 
 #define CO2_TRY                                                                 \
 Zz_CO2_PUSH_NAME_HIDDEN_WARNING                                                 \
