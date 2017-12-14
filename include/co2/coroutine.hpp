@@ -810,8 +810,8 @@ BOOST_PP_IF(Zz_CO2_IS_EMPTY t, Zz_CO2_TUPLE_FOR_EACH_EMPTY,                     
 #   define Zz_CO2_STMT_EXPR_BEG (
 #   define Zz_CO2_STMT_EXPR_END )
 #   else
-#   define Zz_CO2_STMT_EXPR_BEG do
-#   define Zz_CO2_STMT_EXPR_END while (false)
+#   define Zz_CO2_STMT_EXPR_BEG if (true)
+#   define Zz_CO2_STMT_EXPR_END else do; while (false)
 #   endif
 
 #define Zz_CO2_AWAIT(ret, expr, next, ...)                                      \
