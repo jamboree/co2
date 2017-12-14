@@ -1,4 +1,4 @@
-CO2 - Coroutine II [![Try it online][badge.wandbox]](https://wandbox.org/permlink/IqjltCEJ6UrACTig)
+CO2 - Coroutine II [![Try it online][badge.wandbox]](https://wandbox.org/permlink/CQdWu5C1t74lo6Aw)
 ===
 
 A header-only C++ stackless coroutine emulation library, providing interface close to [N4286](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4286.pdf).
@@ -166,7 +166,9 @@ Note that only the first `catch` clause needs to be spelled as `CO2_CATCH`, the 
 
 #### switch-case
 
-Needed only if the switch-body is involved with the suspend-resume points.
+Needed only if the switch-body is involved with the suspend-resume points. There are 2 variants:
+* `CO2_SWITCH`
+* `CO2_SWITCH_CONT` - use when switch-body contains `continue`.
 
 ```c++
 CO2_SWITCH (which,
@@ -184,7 +186,7 @@ default,
 ))
 ```
 
-Note that `break` is still needed if you don't want the control flow to go through the subsequent cases, also note that `continue` **cannot** be used in `CO2_SWITCH` to continue the outer loop due to some implementation details.
+Note that `break` is still needed if you don't want the control flow to fall through the subsequent cases, also note that `continue` **cannot** be used in `CO2_SWITCH` to continue the outer loop, use `CO2_SWITCH_CONT` instead in that case.
 
 ## Difference from N4286
 

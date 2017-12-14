@@ -974,19 +974,39 @@ BOOST_PP_IF(BOOST_PP_MOD(i, 2),                                                 
     Zz_CO2_SWITCH_BODY_TRUE, Zz_CO2_SWITCH_BODY_FALSE)(i, e)                    \
 /***/
 
-#define Zz_CO2_SWITCH(n, seq)                                                   \
+#define Zz_CO2_SWITCH(n, seq, on_cont, cont_pad)                                \
+{                                                                               \
 switch (n)                                                                      \
 {                                                                               \
     BOOST_PP_SEQ_FOR_EACH_I(Zz_CO2_SWITCH_CASE, ~, seq)                         \
 }                                                                               \
-while (false)                                                                   \
+if (false)                                                                      \
 {                                                                               \
-    BOOST_PP_SEQ_FOR_EACH_I(Zz_CO2_SWITCH_BODY, ~, seq)                         \
+    cont_pad;                                                                   \
+    for (;;)                                                                    \
+    {                                                                           \
+        on_cont;                                                                \
         break;                                                                  \
+        BOOST_PP_SEQ_FOR_EACH_I(Zz_CO2_SWITCH_BODY, ~, seq)                     \
+        break;                                                                  \
+    }                                                                           \
+}                                                                               \
 }                                                                               \
 /***/
 
-#define CO2_SWITCH(n, ...) Zz_CO2_SWITCH(n, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))
+#define Zz_CO2_SWITCH_CONT(n, label, ...)                                       \
+Zz_CO2_SWITCH(n, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__),                         \
+    goto label, label: continue)                                                \
+/***/
+
+#define CO2_SWITCH(n, ...)                                                      \
+Zz_CO2_SWITCH(n, BOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__),                         \
+    assert(!"Use CO2_SWITCH_CONT for continue"),)                               \
+/***/
+
+#define CO2_SWITCH_CONT(n, ...)                                                 \
+Zz_CO2_SWITCH_CONT(n, BOOST_PP_CAT(_co2_cont_, __LINE__), __VA_ARGS__)          \
+/***/
 
 #if defined(BOOST_GCC)
 #define Zz_CO2_TYPE_PARAM(r, _, e) using BOOST_PP_CAT(e, _t) = decltype(e);
