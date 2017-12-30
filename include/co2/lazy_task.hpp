@@ -108,7 +108,7 @@ namespace co2 { namespace detail
         }
 
         std::exception_ptr _e;
-        tag _tag = tag::null;
+        tag _tag = tag::pending;
     };
 }}
 
@@ -151,7 +151,7 @@ namespace co2
 
         bool await_ready() const noexcept
         {
-            return _promise->_tag != detail::tag::null;
+            return _promise->_tag != detail::tag::pending;
         }
 
         void await_suspend(coroutine<>& coro) noexcept
