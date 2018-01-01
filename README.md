@@ -222,7 +222,7 @@ __Headers__
 * `#include <co2/shared_task.hpp>`
 * `#include <co2/lazy_task.hpp>`
 * `#include <co2/sync/event.hpp>`
-* `#include <co2/sync/critical_section.hpp>`
+* `#include <co2/sync/mutex.hpp>`
 * `#include <co2/sync/work_group.hpp>`
 * `#include <co2/sync/when_all.hpp>`
 * `#include <co2/sync/when_any.hpp>`
@@ -249,7 +249,6 @@ __Macros__
 * `CO2_SWITCH`
 * `CO2_TEMP_SIZE`
 * `CO2_AUTO`
-* `CO2_CRITICAL_SECTION`
 
 __Classes__
 * `co2::coroutine_traits<R>`
@@ -260,7 +259,7 @@ __Classes__
 * `co2::shared_task<T>`
 * `co2::lazy_task<T>`
 * `co2::event`
-* `co2::critical_section`
+* `co2::mutex`
 * `co2::work_group`
 * `co2::suspend_always`
 * `co2::suspend_never`
