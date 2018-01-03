@@ -1,5 +1,5 @@
 /*//////////////////////////////////////////////////////////////////////////////
-    Copyright (c) 2015-2017 Jamboree
+    Copyright (c) 2015-2018 Jamboree
 
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -560,6 +560,14 @@ namespace co2 { namespace detail
         }
     };
 
+    // Use this function instead of calling frame<...>::create directly to
+    // workaround strange MSVC bug when used in lambda functions.
+    template<class Promise, class F, class Alloc, class Pack>
+    inline frame<Promise, F, Alloc>* create_frame(Alloc&& alloc, Pack&& pack)
+    {
+        return frame<Promise, F, Alloc>::create(std::move(alloc), std::forward<Pack>(pack));
+    }
+
     template<class Promise, class Locals, class Alloc, std::size_t Tmp>
     struct frame_size_helper : resumable<Promise>
     {
@@ -623,6 +631,7 @@ namespace co2 { namespace detail
 
     inline void cancel(void*) {}
 
+#if 0 // Now deprecated.
     template<class... T>
     inline std::allocator<void> get_alloc(T&&...)
     {
@@ -634,6 +643,7 @@ namespace co2 { namespace detail
     {
         return a;
     }
+#endif
 
     template<class F, class P>
     struct finalizer
@@ -1039,10 +1049,13 @@ struct _co2_K                                                                   
 #define Zz_CO2_2ND(a, b) b
 
 #define Zz_CO2_NEW_ALLOC(alloc, args) std::forward<decltype(alloc)>(alloc)
+#define Zz_CO2_OLD_ALLOC(alloc, args) std::allocator<void>{}
+#if 0 // Allocator deduced from args is now deprecated.
 #define Zz_CO2_OLD_ALLOC(alloc, args)                                           \
 ::co2::detail::get_alloc(Zz_CO2_TUPLE_FOR_EACH(                                 \
     Zz_CO2_FWD_PARAM, args) ::co2::detail::void_{})                             \
 /***/
+#endif
 
 #define Zz_CO2_INVOKE(f, args) f args
 #define Zz_CO2_DISPATCHZz_CO2_GET_ALLOC_ (Zz_CO2_OLD_ALLOC, ~)
@@ -1136,8 +1149,8 @@ namespace co2 { namespace detail
             return ::co2::detail::avoid_plain_return{};                         \
         }                                                                       \
     };                                                                          \
-    using _co2_FR = ::co2::detail::frame<_co2_P, _co2_F, decltype(_co2_a)>;     \
-    _co2_C _co2_c(_co2_FR::create(std::move(_co2_a), std::move(_co2_k)));       \
+    _co2_C _co2_c(::co2::detail::create_frame<_co2_P, _co2_F>(                  \
+        std::move(_co2_a), std::move(_co2_k)));                                 \
     return _co2_c.promise().get_return_object(_co2_c);                          \
 }                                                                               \
 /***/
