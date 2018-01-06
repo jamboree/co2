@@ -1,5 +1,5 @@
 /*//////////////////////////////////////////////////////////////////////////////
-    Copyright (c) 2015 Jamboree
+    Copyright (c) 2015-2018 Jamboree
 
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -11,18 +11,25 @@
 #include <boost/thread/thread.hpp>
 #include <boost/thread/future.hpp>
 
+#   if BOOST_THREAD_VERSION < 3
+#   error "BOOST_THREAD_VERSION >= 3 is required"
+#   endif
+
 namespace boost
 {
     template<class T>
-    inline bool await_ready(future<T>& fut)
+    inline bool await_ready(future<T> const& fut)
     {
         return fut.is_ready();
     }
 
     template<class T>
-    inline void await_suspend(future<T>& fut, ::co2::coroutine<>& cb)
+    inline void await_suspend(future<T> const& fut, ::co2::coroutine<>& cb)
     {
-        thread([&fut, cb=std::move(cb)] mutable
+        // Cannot use future::then because the dtor will block.
+        // Note that it's fine to capture `fut` by reference since it's
+        // guranteed to live by the time `cb()` is called.
+        thread([&fut, cb = std::move(cb)]() mutable
         {
             fut.wait();
             cb();
@@ -59,6 +66,7 @@ namespace co2 { namespace boost_future_detail
 
         bool final_suspend() noexcept
         {
+            promise.notify_deferred();
             return false;
         }
 
@@ -69,7 +77,7 @@ namespace co2 { namespace boost_future_detail
 
         void set_exception(std::exception_ptr const& e)
         {
-            promise.set_exception(e);
+            promise.set_exception_deferred(e);
         }
     };
 }}
@@ -89,7 +97,7 @@ namespace co2
             template<class U>
             void set_result(U&& u)
             {
-                this->promise.set_value(std::forward<U>(u));
+                this->promise.set_value_deferred(std::forward<U>(u));
             }
         };
     };
@@ -101,7 +109,7 @@ namespace co2
         {
             void set_result()
             {
-                this->promise.set_value();
+                this->promise.set_value_deferred();
             }
         };
     };
