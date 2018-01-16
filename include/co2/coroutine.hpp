@@ -424,6 +424,11 @@ namespace co2 { namespace detail
             new(&_data) std::exception_ptr(std::move(e));
         }
 
+        void set(std::exception_ptr const& e) noexcept
+        {
+            new(&_data) std::exception_ptr(e);
+        }
+
         std::exception_ptr get() noexcept
         {
             auto& ex = *reinterpret_cast<std::exception_ptr*>(&_data);
@@ -945,6 +950,16 @@ do {                                                                            
     _co2_next = ::co2::detail::sentinel::value;                                 \
     ::co2::detail::set_result(_co2_p, (__VA_ARGS__, ::co2::detail::void_{}));   \
     goto _co2_finalize;                                                         \
+} while (false)                                                                 \
+/***/
+
+#define CO2_RETURN_EXCEPTION(ex)                                                \
+do {                                                                            \
+    _co2_next = ::co2::detail::sentinel::value;                                 \
+    _co2_ex.set(ex);                                                            \
+    ::co2::detail::finalizer<_co2_F, _co2_P> fin{this, _co2_c, _co2_p};         \
+    ::co2::detail::set_exception(&_co2_p, _co2_ex);                             \
+    return ::co2::detail::avoid_plain_return{};                                 \
 } while (false)                                                                 \
 /***/
 
