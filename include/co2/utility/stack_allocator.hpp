@@ -39,7 +39,10 @@ namespace co2
             if (contains(p))
             {
                 if (p + n == _ptr)
+                {
                     _ptr = p;
+                    _rest += n;
+                }
             }
             else
                 ::operator delete(p);
@@ -56,7 +59,6 @@ namespace co2
         }
 
     private:
-
         bool contains(char* p) noexcept
         {
             return _beg <= p && p < _ptr + _rest;
@@ -67,14 +69,13 @@ namespace co2
         std::size_t _rest;
     };
 
-    template<std::size_t Bytes>
+    template<std::size_t Bytes, std::size_t Align = alignof(std::max_align_t)>
     struct stack_buffer : stack_manager
     {
-        stack_buffer() : stack_manager(_data, Bytes) {}
+        stack_buffer() : stack_manager(&_data, Bytes) {}
 
     private:
-
-        alignas(std::max_align_t) char _data[Bytes];
+        std::aligned_storage_t<Bytes, Align> _data;
     };
 
     template<class T = void>
