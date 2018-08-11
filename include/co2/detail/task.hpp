@@ -1,5 +1,5 @@
 /*//////////////////////////////////////////////////////////////////////////////
-    Copyright (c) 2015-2017 Jamboree
+    Copyright (c) 2015-2018 Jamboree
 
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -130,12 +130,6 @@ namespace co2 { namespace task_detail
             {
                 Promise::_tag = tag::cancelled;
             }
-
-            bool final_suspend() noexcept
-            {
-                this->finalize();
-                return !this->test_last(std::memory_order_release);
-            }
         };
 
         impl() noexcept : _promise() {}
@@ -204,7 +198,7 @@ namespace co2 { namespace task_detail
     protected:
         void release() noexcept
         {
-            if (_promise->test_last(std::memory_order_acquire))
+            if (_promise->test_last())
                 coroutine<promise_type>::destroy(_promise);
         }
 

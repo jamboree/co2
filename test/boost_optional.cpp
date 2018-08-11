@@ -1,5 +1,5 @@
 /*//////////////////////////////////////////////////////////////////////////////
-    Copyright (c) 2015 Jamboree
+    Copyright (c) 2015-2018 Jamboree
 
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -7,6 +7,7 @@
 #define CATCH_CONFIG_MAIN
 #include <catch.hpp>
 #include <co2/adapted/boost_optional.hpp>
+#include <boost/optional/optional_io.hpp>
 #include "common.hpp"
 
 auto plus(boost::optional<int> i, int n) CO2_BEG(boost::optional<int>, (i, n))

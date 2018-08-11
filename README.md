@@ -1,4 +1,4 @@
-CO2 - Coroutine II [![Try it online][badge.wandbox]](https://wandbox.org/permlink/CQdWu5C1t74lo6Aw)
+CO2 - Coroutine II [![Try it online][badge.wandbox]](https://wandbox.org/permlink/hl2KlNuVWPFwggGE)
 ===
 
 A header-only C++ stackless coroutine emulation library, providing interface close to [N4286](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4286.pdf).
@@ -423,7 +423,7 @@ Lower is better.
 
 ## License
 
-    Copyright (c) 2015-2017 Jamboree
+    Copyright (c) 2015-2018 Jamboree
 
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)

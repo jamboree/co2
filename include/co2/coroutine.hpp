@@ -667,6 +667,22 @@ namespace co2 { namespace detail
     };
 
     template<class T>
+    struct extract_promise
+    {
+        using P = promise_t<T>;
+
+        P*& p;
+
+        P* operator->() const noexcept { return p; }
+
+        ~extract_promise()
+        {
+            coroutine<P>::destroy(p);
+            p = nullptr;
+        }
+    };
+
+    template<class T>
     inline auto await_ready(T& t) -> decltype(t.await_ready())
     {
         return t.await_ready();

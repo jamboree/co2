@@ -1,5 +1,5 @@
 /*//////////////////////////////////////////////////////////////////////////////
-    Copyright (c) 2016-2017 Jamboree
+    Copyright (c) 2016-2018 Jamboree
 
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -10,7 +10,6 @@
 #include <co2/coroutine.hpp>
 #include <co2/utility/task_cancelled.hpp>
 #include <co2/detail/storage.hpp>
-#include <co2/detail/final_reset.hpp>
 
 namespace co2 { namespace detail
 {
@@ -162,8 +161,7 @@ namespace co2
 
         T await_resume()
         {
-            detail::final_reset<lazy_task> _{this};
-            return _promise->get();
+            return detail::extract_promise<lazy_task>{_promise}->get();
         }
 
         explicit operator bool() const noexcept
@@ -202,7 +200,6 @@ namespace co2
         }
 
     private:
-
         void release() noexcept
         {
             if (_promise->_then)

@@ -1,5 +1,5 @@
 /*//////////////////////////////////////////////////////////////////////////////
-    Copyright (c) 2015-2017 Jamboree
+    Copyright (c) 2015-2018 Jamboree
 
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -10,7 +10,6 @@
 #include <atomic>
 #include <boost/assert.hpp>
 #include <co2/detail/task.hpp>
-#include <co2/detail/final_reset.hpp>
 
 namespace co2 { namespace task_detail
 {
@@ -18,18 +17,22 @@ namespace co2 { namespace task_detail
     {
         std::atomic<void*> _then {this};
         tag _tag {tag::pending};
-        std::atomic_flag _last_owner = ATOMIC_FLAG_INIT;
 
-        bool test_last(std::memory_order mo) noexcept
+        bool test_last() noexcept
         {
-            return _last_owner.test_and_set(mo);
+            return !_then.exchange(nullptr, std::memory_order_acquire);
         }
 
-        void finalize() noexcept
+        bool final_suspend() noexcept
         {
             auto then = _then.exchange(nullptr, std::memory_order_acq_rel);
             if (then != this)
+            {
+                if (!then) // Task is destroyed, we're the last owner.
+                    return false;
                 coroutine_final_run(static_cast<coroutine_handle>(then));
+            }
+            return true; // We're done. Let the task do the cleanup.
         }
 
         bool follow(coroutine<>& cb)
@@ -76,8 +79,7 @@ namespace co2
 
         T await_resume()
         {
-            detail::final_reset<task> _{this};
-            return this->_promise->get();
+            return detail::extract_promise<task>{this->_promise}->get();
         }
 
         shared_task<T> share()

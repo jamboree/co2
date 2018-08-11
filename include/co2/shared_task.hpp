@@ -1,5 +1,5 @@
 /*//////////////////////////////////////////////////////////////////////////////
-    Copyright (c) 2015-2017 Jamboree
+    Copyright (c) 2015-2018 Jamboree
 
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -19,12 +19,12 @@ namespace co2 { namespace task_detail
         std::atomic<unsigned> _use_count {2u};
         tag _tag {tag::pending};
 
-        bool test_last(std::memory_order mo) noexcept
+        bool test_last() noexcept
         {
-            return _use_count.fetch_sub(1u, mo) == 1u;
+            return _use_count.fetch_sub(1u, std::memory_order_acquire) == 1u;
         }
 
-        void finalize() noexcept
+        bool final_suspend() noexcept
         {
             auto next = _then.exchange(nullptr, std::memory_order_acq_rel);
             while (next != this)
@@ -33,6 +33,7 @@ namespace co2 { namespace task_detail
                 next = coroutine_data(then);
                 coroutine_final_run(then);
             }
+            return _use_count.fetch_sub(1u, std::memory_order_release) != 1u;
         }
 
         bool follow(coroutine<>& cb)
