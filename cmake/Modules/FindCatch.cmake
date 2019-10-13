@@ -1,6 +1,7 @@
 find_path(
 	CATCH_INCLUDE_DIR 
 	NAMES catch.hpp
+	PATH_SUFFIXES catch2
 	DOC "catch include dir"
 )
 
