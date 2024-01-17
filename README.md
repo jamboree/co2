@@ -3,6 +3,10 @@ CO2 - Coroutine II [![Try it online][badge.wandbox]](https://wandbox.org/permlin
 
 A header-only C++ stackless coroutine emulation library, providing interface close to [N4286](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4286.pdf).
 
+> __Note__ \
+> All the major compilers support coroutine now, CO2 has accomplished its mission and we don't recommed using it for new code.
+ However, it does have a successor - [COZ](https://github.com/jamboree/coz), which features zero-allocation.
+
 ## Requirements
 
 - C++14
